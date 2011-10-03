@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Getopt::Long qw(:config pass_through no_ignore_case);
 
-my ($fastafile,$sort,$numfasta,$length,$prefix,$regexp,$headerfile,$includefile,$excludefile,$delimiter,$case) = ("-","S","","","","","","",""," ","");
+my ($fastafile,$sort,$numfasta,$length,$prefix,$regexp,$headerfile,$includefile,$excludefile,$delimiter,$case,$interval) = ("-","S","","","","","","",""," ","","");
 GetOptions (
   "fastafile:s" => \$fastafile,
   "sort:s" => \$sort,
@@ -16,23 +16,26 @@ GetOptions (
   "excludefile:s" => \$excludefile,
   "delimiter:s" => \$delimiter,
   "case:s" => \$case,
+  "interval" => \$interval,
 );
 
 $case = uc(substr($case,0,1)) if $case;
 
-my (%include_headers, %exclude_headers);
+my (%include_headers, @include_headers_ordering, %exclude_headers);
 if ($includefile)
 {
     open FILE,"<$includefile" or die "Couldn't open includes file $includefile\n";
     while (<FILE>)
     {
         chomp;
-        if (/^>?(\S+)\s(\d+)\s(\d+)\b/ or /^>?(\S+)_(\d+)_(\d+)\b/)
+        if ($interval and (/^>?(\S+)\s(\d+)\s(\d+)\b/ or /^>?(\S+)_(\d+)_(\d+)\b/))
         {
             push @{$include_headers{$1}}, ($2 <= $3) ? [$2,$3] : [$3,$2];
+            push @include_headers_ordering, $1;
         } elsif (/^>?(\S+)/)
         {
-            $include_headers{$1}=1
+            $include_headers{$1}=1;
+            push @include_headers_ordering, $1;
         }
     }
     close FILE;
@@ -57,6 +60,8 @@ if (uc($sort) eq "R") {
     @sortkeys = sort {$$seqs{$a}{order} <=> $$seqs{$b}{order}} keys %{$seqs};
 } elsif (uc($sort) eq "A") {
     @sortkeys = sort keys %{$seqs};
+} elsif (uc($sort) eq "I") {
+    @sortkeys = @include_headers_ordering;
 } else {
     @sortkeys = sort {length($$seqs{$b}{seq}) <=> length($$seqs{$a}{seq})} keys %{$seqs};
 }
