@@ -1,0 +1,17 @@
+From http://www.thefreedictionary.com/assemblage
+
+as·sem·blage
+ (-smblj)
+n.
+1.
+a. The act of assembling.
+b. The state of being assembled.
+2. A collection of people or things; a gathering.
+3. A collection of items from a single datable component of an archaeological site.
+4. A fitting together of parts, as those in a machine.
+5. A sculptural composition consisting of an arrangement of miscellaneous objects or found materials.
+as·semblag·ist n.
+
+This is a set of scripts for working with genome assemblies, making GC-cov blobs, extracting reads belonging to the blobs, etc
+
+A full pipeline will be published here soon. Please get in touch with sujai.kumar@ed.ac.uk for any help.
