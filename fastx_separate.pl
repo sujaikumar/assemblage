@@ -49,7 +49,7 @@ while (<>) {
     $found = 0;
     for my $pattern (@patterns) {
         $fh = $pattern_fh {$pattern};
-        if (/^.$pattern/) {
+        if (/$pattern/) {
             $found = 1;
             print $fh $_;
             for my $i (2..$lines) {
