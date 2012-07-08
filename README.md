@@ -16,7 +16,7 @@ This is a set of scripts for working with genome assemblies, making taxon-annota
 Example Data Sets
 =================
 
-As an example, we use the following study from the Short Read Archive:
+As an example, we can use the following study from the Short Read Archive:
 
 * ERP001495 - De novo whole-genome sequence of the free-living nematode Caenorhabditis sp. 5 strain JU800 DRD-2008
 
@@ -39,7 +39,7 @@ And these are the four files
 How-Tos
 =======
 
-This list of How-Tos demonstrates how the scripts in this git can be used in conjunction with other installed software to assemble nematode (and other small metazoan genomes)
+This list of How-Tos demonstrates how the scripts in this repository can be used in conjunction with other installed software to assemble nematode (and other small metazoan genomes).
 
 How to sample sequences at random for test read sets
 ----------------------------------------------------
@@ -52,14 +52,12 @@ This command will gunzip the gzipped fastq file (`zcat file.gz` is the same as `
 
 However, running this command independently on the forward (`_1`) and reverse (`_2`) read files will result in different reads being picked. To sample both pairs at the same time, first interleave the files, and then pick 8 lines at a time (4 for the forward read, and 4 for the reverse read), and then use `pick_random.pl` to get 10% of the reads:
 
-    paste \
-      <(zcat g_ju800_110714HiSeq300_1.txt.gz | multi2single -l 4) \
-      <(zcat g_ju800_110714HiSeq300_2.txt.gz | multi2single -l 4) |
+    shuffleSequences_fastx.pl 4 <(zcat g_ju800_110714HiSeq300_1.txt.gz) <(zcat g_ju800_110714HiSeq300_2.txt.gz`) |
     pick_random.pl 8 0.1 > g_ju800_110714HiSeq300_interleaved.txt.r0.1
 
 Note: The <() syntax is for bash process substitution. Anything inside <(...) will be executed and its output will be treated by the containing command as if it is a file.
 
-I could have also used a separate script for interleaving two fastq files (e.g., `shuffleSequences_fastx.pl 4 <(zcat g_ju800_110714HiSeq300_1.txt.gz) <(zcat g_ju800_110714HiSeq300_2.txt.gz`). I wrote `shuffleSequences_fastx.pl` based on shuffleSequences_fastq that used to ship with Velvet. The difference is that it can be used to shuffle both fasta (1st argument should be 2) and fastq (1st argument should be 4) sequences.
+`shuffleSequences_fastx.pl` is based on shuffleSequences_fastq that used to ship with Velvet. The difference is that it can be used to shuffle both fasta (set 1st argument to 2) and fastq (set 1st argument to 4) sequences.
 
 How to adapter- and quality-trim Illumina fastq reads using sickle and scythe in one command with no intermediate files
 -----------------------------------------------------------------------------------------------------------------------
@@ -76,14 +74,14 @@ Requirements:
 Command:
 
     sickle pe -t sanger -n -l 50 \
-      -f <(scythe -a adapters.fa <(zcat g_ju800_110714HiSeq300_1.txt.gz) -q sanger \
-           2> g_ju800_110714HiSeq300_1.scythe.err | perl -plne 's/^$/A/; s/ 1.*/\/1/')  \
-      -r <(scythe -a adapters.fa <(zcat g_ju800_110714HiSeq300_2.txt.gz) -q sanger \
-           2> g_ju800_110714HiSeq300_2.scythe.err | perl -plne 's/^$/A/; s/ 2.*/\/2/')  \
-      -o >(gzip >g_ju800_110714HiSeq300_1.clean.txt.gz) \
-      -p >(gzip >g_ju800_110714HiSeq300_2.clean.txt.gz) \
-      -s >(gzip >g_ju800_110714HiSeq300_s.clean.txt.gz) \
-        &>g_ju800_110714HiSeq300.sickle.err
+        -f <(scythe -a adapters.fa <(zcat g_ju800_110714HiSeq300_1.txt.gz) -q sanger \
+            2> g_ju800_110714HiSeq300_1.scythe.err | perl -plne 's/^$/A/; s/ 1.*/\/1/')  \
+        -r <(scythe -a adapters.fa <(zcat g_ju800_110714HiSeq300_2.txt.gz) -q sanger \
+            2> g_ju800_110714HiSeq300_2.scythe.err | perl -plne 's/^$/A/; s/ 2.*/\/2/')  \
+        -o >(gzip >g_ju800_110714HiSeq300_1.clean.txt.gz) \
+        -p >(gzip >g_ju800_110714HiSeq300_2.clean.txt.gz) \
+        -s >(gzip >g_ju800_110714HiSeq300_s.clean.txt.gz) \
+            &>g_ju800_110714HiSeq300.sickle.err
         
 The command above will first run scythe to search for adapters.fa in `g_ju800_110714HiSeq300_1.txt.gz` and `g_ju800_110714HiSeq300_2.txt.gz` simultaneously. The stderr stream of scythe is stored in `g_ju800_110714HiSeq300_1.scythe.err` and the output of scythe is parsed through a perl one liner that replaces blank lines with a single A, and adds "/1" or "/2" to the read header. This perl one liner is needed because scythe screws up the read names, and because the next script sickle can't deal with blank sequence lines where the whole sequence has been adapter-trimmed.
 
@@ -99,17 +97,62 @@ Additional scythe and sickle parameters can be set as needed (minimum number of 
 If you do have GNU Parallel installed, you can run multiple libraries at the same time like this:
 
     parallel "sickle pe -t sanger -n -l 50 \
-      -f <(scythe -a adapters.fa <(zcat {}_1.txt.gz) -q sanger \
-           2> {}_1.scythe.err | perl -plne 's/^$/A/; s/ 1.*/\/1/')  \
-      -r <(scythe -a adapters.fa <(zcat {}_2.txt.gz) -q sanger \
-           2> {}_2.scythe.err | perl -plne 's/^$/A/; s/ 2.*/\/2/')  \
-      -o >(gzip >{}_1.clean.txt.gz) \
-      -p >(gzip >{}_2.clean.txt.gz) \
-      -s >(gzip >{}_s.clean.txt.gz) \
-        &>{}.sickle.err" ::: g_ju800_110714HiSeq300 g_ju800_110714HiSeq600 
+        -f <(scythe -a adapters.fa <(zcat {}_1.txt.gz) -q sanger \
+            2> {}_1.scythe.err | perl -plne 's/^$/A/; s/ 1.*/\/1/')  \
+        -r <(scythe -a adapters.fa <(zcat {}_2.txt.gz) -q sanger \
+            2> {}_2.scythe.err | perl -plne 's/^$/A/; s/ 2.*/\/2/')  \
+        -o >(gzip >{}_1.clean.txt.gz) \
+        -p >(gzip >{}_2.clean.txt.gz) \
+        -s >(gzip >{}_s.clean.txt.gz) \
+            &>{}.sickle.err" ::: g_ju800_110714HiSeq300 g_ju800_110714HiSeq600 
+
+How to run khmer to digitally normalise reads
+---------------------------------------------
+
+Requirements:
+
+1. Install screed from https://github.com/ctb/screed
+2. Install khmer  from https://github.com/ctb/khmer - this tutorial site might help: http://ged.msu.edu/angus/diginorm-2012/tutorial.html
+
+Typically, you might run *khmer* with a high-pass and a low-pass filter. First remove high coverage reads that don't contribute new k-mers beyond coverage 20, and then remove low coverage reads that have infrequent k-mers (e.g, if coverage <5 is likely to be sequencing errors or non-abundant contaminants). In some cases, only the high-pass filter is used.
+
+khmer can be run on _1 forward and _2 reverse files separately, but we recommend that the files are interleaved before running, otherwise you might end up with almost all _2 reads discarded if all k-mers are found in the _1 file.
+
+    shuffleSequences_fastx.pl 4 <(zcat g_ju800_110714HiSeq300_1.clean.txt.gz) <(zcat g_ju800_110714HiSeq300_2.clean.txt.gz`) | gzip >g_ju800_110714HiSeq300.clean.txt.gz
+
+In this case, I am using the scythed and sickled cleaned read fastq files generated above.
+
+Now, run the high-pass filter first:
+
+    normalize-by-median.py g_ju800_110714HiSeq300.clean.txt.gz -C 20 -k 25 -N 4 -x 2e8 -s interleaved.C20.kh -R interleaved.C20.report
+    
+The command above will take the gzipped cleaned interleaved fastq file specified and normalize-by-median all reads to a max-coverage of `-C 20`.  
+`-k 25` specifies that k-mers of size 25 are used for normalization (this is a reasonable default).  
+`-N 4 -x 2e8` specifies how many blocks are used and how big each is (this settig will take up 4 x 2e8 = 3.2 GB of memory).  
+`-s` specifies the name of the file where the k-mer counts are stored and `-R` specifies a report file.
+
+The output of this command will be a .keep file: `g_ju800_110714HiSeq300.clean.txt.gz.keep` which is a fasta file (khmer doesn't output fastq quality files).
+
+To run the low-pass filter (in this case, remove reads with coverage less than `-C` 5X):
+
+    filter-abund.py -C 5 interleaved.C20.kh g_ju800_110714HiSeq300.clean.txt.gz.keep
+
+The command above takes the k-mer count file `interleaved.C20.kh` and whenever it sees reads in `g_ju800_110714HiSeq300.clean.txt.gz.keep` that have very infrequent k-mer coverage, it discards them. The final output file of this step is named `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt`.
+
+One important thing to remember is that khmer works on individual reads and not on pairs. As a result, the pairing information of a read is lost if its pair is discarded. To get around this problem, we use the script `khmer_re_pair.pl` which pulls in the paired reads:
+
+    khmer_re_pair.pl -o g_ju800_110714HiSeq300.clean.txt.gz -k g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt > g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired
+
+Currently, `khmer_re_pair.pl` needs the complete file to be an interleaved fasta file (can be gzipped). For each read in the khmer'ed fasta file `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt`, it looks up the original interleaved fasta file and outputs both reads in the pair.
 
 How to create a preliminary assembly using ABySS
 ------------------------------------------------
+
+Requirements:
+
+1. Install ABySS from http://www.bcgsc.ca/platform/bioinfo/software/abyss . This README was tested with versions 1.3.3 and 1.3.4. Versions before 1.3.3 did not work as well. It is possible that newer versions will have different options and work even better.
+
+To get a preliminary assembly (PASS) with no pairing information (i.e. treating all reads as single-end),  
 
 How to create a preliminary assembly using CLC
 ----------------------------------------------
@@ -126,4 +169,14 @@ How to search for the best blast hit for a contig
 
 How to make a taxon-annotated GC cov "blob" plot
 ------------------------------------------------
+
+How to select preliminary assembly (PASS) contigs with given GC or coverage
+---------------------------------------------------------------------------
+
+How to make taxon-specific blast databases
+------------------------------------------
+
+How to separate contigs based on which taxon-specific blast database they hit better
+------------------------------------------------------------------------------------
+
 
