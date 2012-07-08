@@ -66,6 +66,16 @@ How to adapter- and quality-trim Illumina fastq reads using sickle and scythe in
 
 (Hmm, that's a bit of a long How-To title, almost like article titles in the 1600s, such as this one: [An Observation and Experiment Concerning a Mineral Balsom, Found in a Mine of Italy by Signior Marc-Antonio Castagna; Inserted in the 7th. Giornale Veneto de Letterati of June 22. 1671, and Thence English'd as Follows](http://dx.doi.org/10.1098/rstl.1671.0068))
 
+	parallel "sickle pe -t sanger -n -l 50 \
+	  -f <(scythe -a adapters.fa <(zcat {}_1.txt.gz) -q sanger \
+	       2> {}_1.scythe.err | perl -plne 's/^$/A/; s/ 1.*/\/1/')  \
+	  -r <(scythe -a adapters.fa <(zcat {}_2.txt.gz) -q sanger \
+	       2> {}_2.scythe.err | perl -plne 's/^$/A/; s/ 2.*/\/2/')  \
+	  -o >(gzip >{}_1.clean.txt.gz) \
+	  -p >(gzip >{}_2.clean.txt.gz) \
+	  -s >(gzip >{}_s.clean.txt.gz) \
+	    &>{}.sickle.err" ::: g_ju800_110714HiSeq300 g_ju800_110714HiSeq600 
+
 How to create a preliminary assembly using ABySS
 ------------------------------------------------
 
