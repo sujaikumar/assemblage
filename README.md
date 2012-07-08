@@ -73,6 +73,8 @@ Requirements:
 3. Install GNU Parallel (optional, but highly recommended!) from http://www.gnu.org/software/parallel/
 4. A file with Illumina adapters - you can use `adapters.fa` from this repository
 
+Command:
+
     sickle pe -t sanger -n -l 50 \
       -f <(scythe -a adapters.fa <(zcat g_ju800_110714HiSeq300_1.txt.gz) -q sanger \
            2> g_ju800_110714HiSeq300_1.scythe.err | perl -plne 's/^$/A/; s/ 1.*/\/1/')  \
