@@ -31,10 +31,10 @@ Two libraries (or "Experiments" in SRA terminology) were run for this sample:
 
 And these are the four files
 
-* `g_ju800_110714HiSeq300_1.txt.gz - 300 bp library forward read`
-* `g_ju800_110714HiSeq300_2.txt.gz - 300 bp library reverse read`
-* `g_ju800_110714HiSeq600_1.txt.gz - 600 bp library forward read`
-* `g_ju800_110714HiSeq600_1.txt.gz - 600 bp library reverse read`
+* `g_ju800_110714HiSeq300_1.txt.gz` - 300 bp library forward read
+* `g_ju800_110714HiSeq300_2.txt.gz` - 300 bp library reverse read
+* `g_ju800_110714HiSeq600_1.txt.gz` - 600 bp library forward read
+* `g_ju800_110714HiSeq600_1.txt.gz` - 600 bp library reverse read
 
 How-Tos
 =======
@@ -66,15 +66,45 @@ How to adapter- and quality-trim Illumina fastq reads using sickle and scythe in
 
 (Hmm, that's a bit of a long How-To title, almost like article titles in the 1600s, such as this one: [An Observation and Experiment Concerning a Mineral Balsom, Found in a Mine of Italy by Signior Marc-Antonio Castagna; Inserted in the 7th. Giornale Veneto de Letterati of June 22. 1671, and Thence English'd as Follows](http://dx.doi.org/10.1098/rstl.1671.0068))
 
-	parallel "sickle pe -t sanger -n -l 50 \
-	  -f <(scythe -a adapters.fa <(zcat {}_1.txt.gz) -q sanger \
-	       2> {}_1.scythe.err | perl -plne 's/^$/A/; s/ 1.*/\/1/')  \
-	  -r <(scythe -a adapters.fa <(zcat {}_2.txt.gz) -q sanger \
-	       2> {}_2.scythe.err | perl -plne 's/^$/A/; s/ 2.*/\/2/')  \
-	  -o >(gzip >{}_1.clean.txt.gz) \
-	  -p >(gzip >{}_2.clean.txt.gz) \
-	  -s >(gzip >{}_s.clean.txt.gz) \
-	    &>{}.sickle.err" ::: g_ju800_110714HiSeq300 g_ju800_110714HiSeq600 
+Requirements:
+
+1. Install scythe for adapter trimming from https://github.com/ucdavis-bioinformatics/scythe 
+2. Install sickle for quality trimming from https://github.com/ucdavis-bioinformatics/sickle
+3. Install GNU Parallel (optional, but highly recommended!) from http://www.gnu.org/software/parallel/
+4. A file with Illumina adapters - you can use `adapters.fa` from this repository
+
+    sickle pe -t sanger -n -l 50 \
+      -f <(scythe -a adapters.fa <(zcat g_ju800_110714HiSeq300_1.txt.gz) -q sanger \
+           2> g_ju800_110714HiSeq300_1.scythe.err | perl -plne 's/^$/A/; s/ 1.*/\/1/')  \
+      -r <(scythe -a adapters.fa <(zcat g_ju800_110714HiSeq300_2.txt.gz) -q sanger \
+           2> g_ju800_110714HiSeq300_2.scythe.err | perl -plne 's/^$/A/; s/ 2.*/\/2/')  \
+      -o >(gzip >g_ju800_110714HiSeq300_1.clean.txt.gz) \
+      -p >(gzip >g_ju800_110714HiSeq300_2.clean.txt.gz) \
+      -s >(gzip >g_ju800_110714HiSeq300_s.clean.txt.gz) \
+        &>g_ju800_110714HiSeq300.sickle.err
+        
+The command above will first run scythe to search for adapters.fa in `g_ju800_110714HiSeq300_1.txt.gz` and `g_ju800_110714HiSeq300_2.txt.gz` simultaneously. The stderr stream of scythe is stored in `g_ju800_110714HiSeq300_1.scythe.err` and the output of scythe is parsed through a perl one liner that replaces blank lines with a single A, and adds "/1" or "/2" to the read header. This perl one liner is needed because scythe screws up the read names, and because the next script sickle can't deal with blank sequence lines where the whole sequence has been adapter-trimmed.
+
+`sickle pe -t sanger -n -l 50` then runs sickle on the files output by the scythe and perl one liner above:
+
+* `pe` means treat corresponding reads from the `-f` and `-r` files as being parts of a pair, so if a read is discarded, its pair is discarded too.
+* `-t sanger` tells it that the quality values are in sanger fastq encoding
+* `-n` discards reads/pairs with any Ns in them
+* `-l 50` discards reads/pairs with fewer than 50 bp
+
+Additional scythe and sickle parameters can be set as needed (minimum number of matches to adapter sequence, trim bases from start of read, etc).
+
+If you do have GNU Parallel installed, you can run multiple libraries at the same time like this:
+
+    parallel "sickle pe -t sanger -n -l 50 \
+      -f <(scythe -a adapters.fa <(zcat {}_1.txt.gz) -q sanger \
+           2> {}_1.scythe.err | perl -plne 's/^$/A/; s/ 1.*/\/1/')  \
+      -r <(scythe -a adapters.fa <(zcat {}_2.txt.gz) -q sanger \
+           2> {}_2.scythe.err | perl -plne 's/^$/A/; s/ 2.*/\/2/')  \
+      -o >(gzip >{}_1.clean.txt.gz) \
+      -p >(gzip >{}_2.clean.txt.gz) \
+      -s >(gzip >{}_s.clean.txt.gz) \
+        &>{}.sickle.err" ::: g_ju800_110714HiSeq300 g_ju800_110714HiSeq600 
 
 How to create a preliminary assembly using ABySS
 ------------------------------------------------
