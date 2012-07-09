@@ -367,6 +367,56 @@ This set of reads can now be reassembled stringently.
 How to find mate-paired reads that don't map to the ends of contigs and use those to conservatively scaffold the contigs
 ------------------------------------------------------------------------------------------------------------------------
 
+Requirements:
+
+1. `clc_ref_assemble` mapping program from the CLC Bio assembly cell suite (tested on version 4.06 beta). A bowtie2 based version will be coming soon
+2. Mate-pair (MP) read library with interleaved reads in fasta format `mplib=mpreads.interleaved.fasta.gz`
+3. Assembly to be scaffolded `assemblyfile=scaffolds.fa`
+4. `clc_cas_to_sspace_tab.bash` from this repository
+5. `fastaqual_multiline_to_singleline.pl` from this repository (used by `clc_cas_to_sspace_tab.bash`)
+6. SSPACE installed from http://baseclear.com/landingpages/sspacev12/
+
+The problem with many MP libraries is that they are heavily contaminated with short-inserts because the Illumina MP protocol is a biotin-based enrichment process. Therefore, the library is only "enriched" for long-insert MP reads. Short-insert PE reads might make up more than 50% of the library, confounding assembly programs.
+
+We found that one of our 4 kbp MP libraries had >50% reads mapping as "innies" (FR orientation) at 200-500 bp sizes and only 10% mapping as "outies" (RF orientation) at 3-5 kbp. To use the remaining reads to scaffold the draft genome assembly, we wanted to eliminate the reads that were actually short-insert. However, if one read matches to one contig, and its pair matches to another contig, how would we know if that pair came from a short (200-500 bp) PE fragment, or a long (4 kbp) MP fragment?
+
+Our solution for eliminating short-insert reads was:
+
+* map the whole MP library back to the genome assembly
+* discard all read pairs that mapped to the same contig (because we are only interested in those read pairs that can help us scaffold across contigs)
+* discard all read pairs where one of the reads mapped within 600 bp of the end of a contig. This was the key step, because it enabled us to be sure that if the two reads in a pair mapped to two different contigs, their insert size was >600 bp (even in the worst case scenario that the ends of the two contigs overlapped)
+
+Once we had pulled out this set of reads, we were able to use a standalone scaffolder such as SSPACE to bridge the contigs.
+
+Steps:
+
+Map the interleaved MP reads to the assembly
+
+    assemblyfile=scaffolds.fa
+    mplib=mpreads.interleaved.fasta.gz
+    
+    clc_ref_assemble -d $assemblyfile -q $mplib -o $assemblyfile.$mplib.l95s95.cas -l 0.95 -s 0.95
+    
+* `-d` is the reference sequence fasta file
+* `-q` is the read file
+* `-o` is the output filename - CLC's propriety CAS format
+* `-l 0.95 -s 0.95` says that at least 95% of the read **l**ength must match with at least 95% **s**imilarity. 
+
+Next step:
+
+    clc_cas_to_sspace_tab.bash $assemblyfile.$mplib.l95s95.cas $assemblyfile 600
+    
+The three arguments to this script are:
+
+1. The CLC mapping file in CAS format
+2. The assembly fasta file (needed, so that the length of each contig can be calculated, to see if a read is mapping within a certain distance from the ends)
+3. The distance from the contig ends where a MP read is not allowed to map. Default 600
+
+The output is a file called `$assemblyfile.$mplib.l95s95.cas.dist600.tab` which is in a tab delimited format as used by SSPACE, where each line defines the contig coordinates that a pair of reads maps to:  
+contig1     start1  end1    contig2     start2  end2
+
+To use this file in SSPACE, look up the documentation for SSPACE.
+
 How to run khmer to digitally normalise reads
 ---------------------------------------------
 
@@ -410,9 +460,5 @@ Note: all of this has to be done for the other library (600 bp) as well. i.e. we
 
 * `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired`
 * `g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired`
-
-How to rename and reorder scaffolds post-assembly
--------------------------------------------------
-
 
 
