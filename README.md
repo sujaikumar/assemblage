@@ -16,7 +16,7 @@ This is a set of scripts for working with genome assemblies, making taxon-annota
 Example Data Sets
 =================
 
-As an example, we can use the following study from the Short Read Archive:
+As an example, we can use the following study from the Short Read Archive: 
 
 * ERP001495 - De novo whole-genome sequence of the free-living nematode Caenorhabditis sp. 5 strain JU800 DRD-2008
 
@@ -29,20 +29,30 @@ Two libraries (or "Experiments" in SRA terminology) were run for this sample:
 * ERX114449 - 300 bp library with Illumina HiSeq2000 101 bp PE sequencing
 * ERX114450 - 600 bp library with Illumina HiSeq2000 101 bp PE sequencing
 
-And these are the four files
+And these are the four files that can be accessed from http://www.ebi.ac.uk/ena/data/view/ERP001495
 
 * `g_ju800_110714HiSeq300_1.txt.gz` - 300 bp library forward read
 * `g_ju800_110714HiSeq300_2.txt.gz` - 300 bp library reverse read
 * `g_ju800_110714HiSeq600_1.txt.gz` - 600 bp library forward read
-* `g_ju800_110714HiSeq600_1.txt.gz` - 600 bp library reverse read
+* `g_ju800_110714HiSeq600_2.txt.gz` - 600 bp library reverse read
 
 How-Tos
 =======
 
 This list of How-Tos demonstrates how the scripts in this repository can be used in conjunction with other installed software to assemble nematode (and other small metazoan genomes).
 
-How to sample sequences at random for test read sets
-----------------------------------------------------
+How to make a taxon-annotated GC cov "blob" plot
+------------------------------------------------
+
+This section is a meta section that describes the How-Tos you need to make a taxon-annotated GC-cov blob plot like the one at http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3294205/figure/Fig3/
+
+1. adapter- and quality-trim Illumina fastq reads using sickle and scythe in one command with no intermediate files
+2. create a preliminary assembly using ABySS
+3. map reads to an assembly to get insert-size and coverage information
+4. 
+
+How to sub-sample sequences at random for test read sets
+--------------------------------------------------------
 
 The example read files are between 5 and 8 GB each, and processing the complete data set could take a long time. If you just want to run all the How-Tos in this README on smaller files to test how the scripts work, use the `pick_random.pl` script:
 
@@ -57,7 +67,13 @@ However, running this command independently on the forward (`_1`) and reverse (`
 
 Note: The <() syntax is for bash process substitution. Anything inside <(...) will be executed and its output will be treated by the containing command as if it is a file.
 
-`shuffleSequences_fastx.pl` is based on shuffleSequences_fastq that used to ship with Velvet. The difference is that it can be used to shuffle both fasta (set 1st argument to 2) and fastq (set 1st argument to 4) sequences.
+`shuffleSequences_fastx.pl` is based on shuffleSequences_fastq.pl that used to ship with Velvet. The difference is that it can be used to shuffle both fasta (set 1st argument to 2) and fastq (set 1st argument to 4) sequences.
+
+`g_ju800_110714HiSeq300_interleaved.txt.r0.1` is an interleaved/shuffled file. If you want the _1 and the _2 reads in separate files, you will have to do one more step:
+
+    unshuffleSequences_fastx.pl 4 g_ju800_110714HiSeq300_interleaved.txt.r0.1
+
+which will create `g_ju800_110714HiSeq300_interleaved.txt.r0.1.1` and `g_ju800_110714HiSeq300_interleaved.txt.r0.1.2`
 
 How to adapter- and quality-trim Illumina fastq reads using sickle and scythe in one command with no intermediate files
 -----------------------------------------------------------------------------------------------------------------------
@@ -87,10 +103,13 @@ The command above will first run scythe to search for adapters.fa in `g_ju800_11
 
 `sickle pe -t sanger -n -l 50` then runs sickle on the files output by the scythe and perl one liner above:
 
-* `pe` means treat corresponding reads from the `-f` and `-r` files as being parts of a pair, so if a read is discarded, its pair is discarded too.
+* `pe` means treat corresponding reads from the `-f` and `-r` files as being parts of a pair
 * `-t sanger` tells it that the quality values are in sanger fastq encoding
 * `-n` discards reads/pairs with any Ns in them
 * `-l 50` discards reads/pairs with fewer than 50 bp
+* `-o` filename of the output forward read
+* `-p` filename of the output paired reverse read
+* `-s` filename of the singletons (where the other read in the pair was discarded if it had an N or was shorter than `-l 50`
 
 Additional scythe and sickle parameters can be set as needed (minimum number of matches to adapter sequence, trim bases from start of read, etc).
 
@@ -105,6 +124,140 @@ If you do have GNU Parallel installed, you can run multiple libraries at the sam
         -p >(gzip >{}_2.clean.txt.gz) \
         -s >(gzip >{}_s.clean.txt.gz) \
             &>{}.sickle.err" ::: g_ju800_110714HiSeq300 g_ju800_110714HiSeq600 
+
+This command will create three files for each library:
+ - `g_ju800_110714HiSeq300_1.clean.txt.gz`
+ - `g_ju800_110714HiSeq300_2.clean.txt.gz`
+ - `g_ju800_110714HiSeq300_s.clean.txt.gz`
+ - `g_ju800_110714HiSeq600_1.clean.txt.gz`
+ - `g_ju800_110714HiSeq600_2.clean.txt.gz`
+ - `g_ju800_110714HiSeq600_s.clean.txt.gz`
+
+You can interleave the _1 and _2 files:
+
+    shuffleSequences_fastx.pl 4 \
+        <(zcat g_ju800_110714HiSeq300_1.clean.txt.gz) \
+        <(zcat g_ju800_110714HiSeq300_2.clean.txt.gz) |
+    gzip > g_ju800_110714HiSeq300.clean.txt.gz
+
+How to create a preliminary assembly using ABySS
+------------------------------------------------
+
+Requirements:
+
+1. Install ABySS from http://www.bcgsc.ca/platform/bioinfo/software/abyss . This README was tested with versions 1.3.3 and 1.3.4. Versions before 1.3.3 did not work as well. It is possible that newer versions will have different options and work even better.
+
+To get a preliminary assembly (PASS) with no pairing information (i.e. treating all reads as single-end) from the cleaned reads above:
+
+    name=C20rp.31.n10.se;
+    mkdir $name;
+    abyss-pe -C $name name=$name n=10 k=31 se='g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired' &>$name/log
+
+Making a new directory with the parameters used makes it easy to track the settings used if we later create a lot of assemblies with different settings.  
+
+* `-C` puts the output in the specified directory (`$name` in this case) rather than in the current directory
+* `n=10` is the minimum number of connecting pairs needed before two unitigs or contigs are joined
+* `k=31` is the k-mer used for making the de Bruijn graph. 31 is a reasonable default. Longer k-mers may give more contiguous assemblies but the goal of the PASS is to get as much assembled sequence as possible rather than get the longest contigs.
+
+The single-end PASS will be in `$name/$name-contigs.fa`
+
+How to map reads to an assembly to get insert-size and coverage information
+---------------------------------------------------------------------------
+
+1. Install bowtie2 from http://bowtie-bio.sourceforge.net/bowtie2 . This README was tested with Version 2.0.0-beta5 and Version 2.0.0-beta6 but will probably work with newer versions as well if the syntax has not changed.
+2. Install samtools from http://samtools.sourceforge.net
+3. `sam_len_cov_gc_insert.pl` from this repository
+4. Preliminary assembly - a fasta file with contigs `filename-contigs.fa`.
+5. Interleaved read files for each library. They do not have to be interleaved to calculate coverage for each contig, but if they are interleaved, then generating insert-size plots (next How-To) is easier. In this example, I assume that we want to map the trimmed 300 bp and the 600 bp interleaved files:
+ - `g_ju800_110714HiSeq300.clean.txt.gz`
+ - `g_ju800_110714HiSeq600.clean.txt.gz`
+
+    # first create a bowtie2 index
+    assemblyfile=filename-contigs.fa
+    bowtie2-build $assemblyfile $assemblyfile
+
+    # map reads for multiple libraries using a bash for loop
+    for lib in g_ju800_110714HiSeq300.clean.txt.gz g_ju800_110714HiSeq600.clean.txt.gz
+    do
+        bowtie2 -x $assemblyfile -f -U $lib --very-fast-local -p 8 --reorder --mm | 
+        tee >(samtools view -S -b - > $assemblyfile.$lib.bowtie2.bam) |
+        tee >(samtools view -S -b - | samtools sort -m 2000000000 - $assemblyfile.$lib.bowtie2.sorted) |
+        sam_len_cov_gc_insert.pl -i -f $assemblyfile -s - -out $assemblyfile.$lib
+    end
+
+The two `tee` commands take the SAM output generated by bowtie2 and write them out as read-sorted `$assemblyfile.$lib.bowtie2.bam` and contig-sorted `$assemblyfile.$lib.bowtie2.sorted.bam`.
+
+`sam_len_cov_gc_insert.pl` takes the following options:
+
+* `-i` use this switch if your read file is interleaved and you want to estimate insert sizes. Leave it out if you used bowtie2 without an interleaved file
+* `-f` assembly fasta file
+* `-s` alignments in SAM format
+* `-out` output file prefix
+
+and creates the following files:
+
+* `outputprefix.lencovgc.txt` - tab delimited text file with these columns:
+ 1. library name (read filename by default)
+ 2. contig id
+ 3. contig length
+ 4. contig coverage (read coverage, not k-mer coverage)
+ 5. contig gc content (proportion from 0 to 1)
+ 
+ This file is used to make taxon-annotated GC-coverage "blob" plots
+ 
+* `outputprefix.lencovgc.fna` - a fasta file (with each sequence in a single line) where the contig id has a useful suffix so the fasta header looks like this `>contigid_len_cov_gc`, e.g., `>contig23_1221_67.623_0.3222349`. We found this file useful for quickly pulling out subsets of contigs that met a certain GC and coverage criteria, as described in **How to select preliminary assembly (PASS) contigs with given GC or coverage**.
+
+If you used interleaved read files and the `-i` switch in `sam_len_cov_gc_insert.pl`, then you also get two additional files:
+
+* `outputprefix.pairing.hist.txt` - Frequency distribution of each insert size and whether the reads were pointed at each other ("innies") or away from each other ("outies", as you would expect from Illumina's mate-pair protocol)
+* `outputprefix.pairing.stat.txt` - Some statistics about what percentage of reads were mapped to the same contig and how many were innies or outies. etc.
+
+How to make a plot of insert sizes for each library
+---------------------------------------------------
+
+If you used interleaved reads when mapping the read files to the preliminary assembly using bowtie2 (in the previous How-To), then you can use the following R script to create a pretty plot of the insert sizes.
+
+Requirements:
+
+1. R installed (Rscript in your path)
+2. R packages ggplot2 and grid installed
+3. `plot_insert_freq_txt_binned.R` from this repository
+4. `outputprefix.pairing.hist.txt` from the output of `sam_len_cov_gc_insert.pl` with `-i` option (previous How-To)
+
+    plot_insert_freq_txt_binned.R outputprefix.pairing.hist.txt
+
+How to assign high-level taxon IDs to contigs
+---------------------------------------------
+
+Requirements
+
+1. NCBI blast+ suite installed from ftp://ftp.ncbi.nih.gov/blast/executables/blast+/LATEST
+2. NCBI nt blast db downloaded and unpacked from ftp://ftp.ncbi.nih.gov/blast/db/
+ * `wget ftp://ftp.ncbi.nih.gov/blast/db/nt.??.tar.gz`
+3. NCBI taxonomy dumps downloaded and unpacked:
+ * `wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/gi_taxid_nucl.dmp.gz`
+ * `wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz`
+4. `fastaqual_select.pl` from this repository
+5. `blast_taxonomy_report_topscore.pl` from this repository
+ 
+Steps:
+
+1. `assemblyfile=filename-contigs.fa`
+2. Select some contigs at random from the preliminary assembly
+
+ `fastaqual_select.pl -f $assemblyfile -s r -n 10000 >$assemblyfile.r10000`
+ 
+How to make blobology plots with R
+----------------------------------
+
+How to make taxon-specific blast databases
+------------------------------------------
+
+How to select preliminary assembly (PASS) contigs with given GC or coverage
+---------------------------------------------------------------------------
+
+How to separate contigs based on which taxon-specific blast database they hit better
+------------------------------------------------------------------------------------
 
 How to run khmer to digitally normalise reads
 ---------------------------------------------
@@ -125,11 +278,11 @@ In this case, I am using the scythed and sickled cleaned read fastq files genera
 Now, run the high-pass filter first:
 
     normalize-by-median.py g_ju800_110714HiSeq300.clean.txt.gz -C 20 -k 25 -N 4 -x 2e8 -s interleaved.C20.kh -R interleaved.C20.report
-    
-The command above will take the gzipped cleaned interleaved fastq file specified and normalize-by-median all reads to a max-coverage of `-C 20`.  
-`-k 25` specifies that k-mers of size 25 are used for normalization (this is a reasonable default).  
-`-N 4 -x 2e8` specifies how many blocks are used and how big each is (this settig will take up 4 x 2e8 = 3.2 GB of memory).  
-`-s` specifies the name of the file where the k-mer counts are stored and `-R` specifies a report file.
+
+* The command above will take the gzipped cleaned interleaved fastq file specified and normalize-by-median all reads to a max-coverage of `-C 20`
+* `-k 25` specifies that k-mers of size 25 are used for normalization (this is a reasonable default)
+* `-N 4 -x 2e8` specifies how many blocks are used and how big each is (this settig will take up 4 x 2e8 = 3.2 GB of memory)
+* `-s` specifies the name of the file where the k-mer counts are stored and `-R` specifies a report file
 
 The output of this command will be a .keep file: `g_ju800_110714HiSeq300.clean.txt.gz.keep` which is a fasta file (khmer doesn't output fastq quality files).
 
@@ -143,40 +296,19 @@ One important thing to remember is that khmer works on individual reads and not 
 
     khmer_re_pair.pl -o g_ju800_110714HiSeq300.clean.txt.gz -k g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt > g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired
 
-Currently, `khmer_re_pair.pl` needs the complete file to be an interleaved fasta file (can be gzipped). For each read in the khmer'ed fasta file `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt`, it looks up the original interleaved fasta file and outputs both reads in the pair.
+Currently, `khmer_re_pair.pl` needs the complete file to be an interleaved fasta file (can be gzipped). For each read in the khmer-ed fasta file `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt`, it looks up the original interleaved fasta file and outputs both reads in the pair.
 
-How to create a preliminary assembly using ABySS
-------------------------------------------------
+Note: all of this has to be done for the other library (600 bp) as well. i.e. we should be left with khmer-ed and repaired files:
 
-Requirements:
-
-1. Install ABySS from http://www.bcgsc.ca/platform/bioinfo/software/abyss . This README was tested with versions 1.3.3 and 1.3.4. Versions before 1.3.3 did not work as well. It is possible that newer versions will have different options and work even better.
-
-To get a preliminary assembly (PASS) with no pairing information (i.e. treating all reads as single-end),  
-
-How to create a preliminary assembly using CLC
-----------------------------------------------
-
-How to map reads to an assembly to get coverage information for each contig/scaffold
-------------------------------------------------------------------------------------
-
-How to make a plot of insert sizes for each library
----------------------------------------------------
+* `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired`
+* `g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired`
 
 
-How to search for the best blast hit for a contig
+How to find mate-paired reads that don't map to the ends of contigs and use those to conservatively scaffold the contigs
+------------------------------------------------------------------------------------------------------------------------
+
+How to rename and reorder scaffolds post-assembly
 -------------------------------------------------
 
-How to make a taxon-annotated GC cov "blob" plot
-------------------------------------------------
-
-How to select preliminary assembly (PASS) contigs with given GC or coverage
----------------------------------------------------------------------------
-
-How to make taxon-specific blast databases
-------------------------------------------
-
-How to separate contigs based on which taxon-specific blast database they hit better
-------------------------------------------------------------------------------------
 
 
