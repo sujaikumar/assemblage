@@ -323,11 +323,49 @@ Remember:
 1. get the db=nuccore part right (change to db=protein for nr)
 2. qty=NUM should be greater than total number of sequences
 
-How to select preliminary assembly (PASS) contigs with given GC or coverage
----------------------------------------------------------------------------
-
 How to separate contigs based on which taxon-specific blast database they hit better
 ------------------------------------------------------------------------------------
+
+Requirements:
+
+1. Tabular blast hits to first taxon-specific blast dabatabse, e.g., `prelim_contigs_nt_Nematoda.m8.txt`
+2. Tabular blast hits to second taxon-specific blast dabatabse, e.g., `prelim_contigs_nt_Proteobacteria.m8.txt`
+3. `blast_separate_taxa.pl` from this repository
+
+The following command will create three files: `prelim_contigs_nt_Nematoda.m8.txt.only`, `prelim_contigs_nt_Proteobacteria.m8.txt.only`, and `hitting.both`, and will classify query contigs from the blast results files into one of these three files.
+
+    blast_separate_taxa.pl -d 50 \
+        -b1 prelim_contigs_nt_Nematoda.m8.txt \
+        -b2 prelim_contigs_nt_Proteobacteria.m8.txt
+
+* `-d 50` will require a minimum bitscore hit of 50 for a hit to be considered. This is also the minimum difference needed for a contig to be classified as hitting one database better if the contig hits both databases. If the score or the difference is <50, then that contig will end up in `hitting.both`
+* `-b1` name of file with tabular blast hits to first blast database
+* `-b2` name of file with tabular blast hits to second blast database
+
+How to extract reads (and their pairs) that map to a set of desired contigs in the preliminary assembly
+-------------------------------------------------------------------------------------------------------
+
+Once a set of contigs has been identified for reassembly by a series of positive and negative filtering steps, we need to extract the reads that belong to those contigs.
+
+Requirements:
+
+1. Read-sorted BAM file with interleaved reads mapped to preliminary assembly. e.g., `$assemblyfile.$lib.bowtie2.bam` above
+2. Text file with list of desired contig ids, one per line
+3. `bowtie2_extract_reads_mapped_to_specific_contigs.pl` from this repository
+
+    bowtie2_extract_reads_mapped_to_specific_contigs.pl \
+        -s <(samtools view $assemblyfile.$lib.bowtie2.bam) \
+        -id contigids1.txt -id contigids2.txt -u -o $assemblyfile.$lib
+
+* `-o` optional output prefix
+* `-s` specifies a SAM alignment file with interleaved reads and soft clipping (i.e the full read is present). Because we have a BAM file instead, we use `<(samtools view $assemblyfile.$lib.bowtie2.bam)`
+* `-i` text file with contig ids, one per line. Can be specified multiple times to create multiple sets of reads. For example, if we have Nematoda.contigids.txt and Proteobacteria.contigids.txt, then this script will create an interleaved fasta file in gzipped format with the name `outputprefix.Nematoda.contigids.txt.mapped.reads.fa.gz` and `outputprefix.Proteobacteria.contigids.txt.mapped.reads.fa.gz`
+* `-u` is optional. If provided, a file called `outputprefix.unmapped.reads.fa.gz` is created with reads that did not map to any of the contigid file sets above
+
+This set of reads can now be reassembled stringently.
+
+How to find mate-paired reads that don't map to the ends of contigs and use those to conservatively scaffold the contigs
+------------------------------------------------------------------------------------------------------------------------
 
 How to run khmer to digitally normalise reads
 ---------------------------------------------
@@ -372,10 +410,6 @@ Note: all of this has to be done for the other library (600 bp) as well. i.e. we
 
 * `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired`
 * `g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired`
-
-
-How to find mate-paired reads that don't map to the ends of contigs and use those to conservatively scaffold the contigs
-------------------------------------------------------------------------------------------------------------------------
 
 How to rename and reorder scaffolds post-assembly
 -------------------------------------------------
