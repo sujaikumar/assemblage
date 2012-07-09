@@ -49,7 +49,8 @@ This section is a meta section that describes the How-Tos you need to make a tax
 1. adapter- and quality-trim Illumina fastq reads using sickle and scythe in one command with no intermediate files
 2. create a preliminary assembly using ABySS
 3. map reads to an assembly to get insert-size and coverage information
-4. 
+4. assign high-level taxon IDs to contigs
+5. make blobology plots with R
 
 How to sub-sample sequences at random for test read sets
 --------------------------------------------------------
@@ -151,7 +152,9 @@ To get a preliminary assembly (PASS) with no pairing information (i.e. treating 
 
     name=C20rp.31.n10.se;
     mkdir $name;
-    abyss-pe -C $name name=$name n=10 k=31 se='g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired' &>$name/log
+    abyss-pe -C $name name=$name n=10 k=31 \
+        se='g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired \
+            g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired' &>$name/log
 
 Making a new directory with the parameters used makes it easy to track the settings used if we later create a lot of assemblies with different settings.  
 
@@ -172,11 +175,13 @@ How to map reads to an assembly to get insert-size and coverage information
  - `g_ju800_110714HiSeq300.clean.txt.gz`
  - `g_ju800_110714HiSeq600.clean.txt.gz`
 
-    # first create a bowtie2 index
+Create a bowtie2 index
+
     assemblyfile=filename-contigs.fa
     bowtie2-build $assemblyfile $assemblyfile
 
-    # map reads for multiple libraries using a bash for loop
+Map reads for multiple libraries using a bash for loop
+
     for lib in g_ju800_110714HiSeq300.clean.txt.gz g_ju800_110714HiSeq600.clean.txt.gz
     do
         bowtie2 -x $assemblyfile -f -U $lib --very-fast-local -p 8 --reorder --mm | 
@@ -240,18 +245,83 @@ Requirements
 4. `fastaqual_select.pl` from this repository
 5. `blast_taxonomy_report_topscore.pl` from this repository
  
-Steps:
+I'm using bash variables to store filenames so that the command syntax is more generic:
 
-1. `assemblyfile=filename-contigs.fa`
-2. Select some contigs at random from the preliminary assembly
+    assemblyfile=filename-contigs.fa
+    
+Select some contigs at random from the preliminary assembly:
 
- `fastaqual_select.pl -f $assemblyfile -s r -n 10000 >$assemblyfile.r10000`
- 
+    fastaqual_select.pl -f $assemblyfile -s r -n 10000 >$assemblyfile.r10000
+
+* `-f` is the name of the fasta file
+* `-s r` sorts at random
+* `-n 10000` picks 10000 contigs. you can pick more or less depending on how big your preliminary assembly is
+
+Blast this file against the NCBI nt database. A megablast search should be quick, and enough to estimate the approximate taxonomic composition of the preliminary assembly:
+
+    blastn -task megablast -query $assemblyfile.r10000 -db /path/to/blastdb/nt -max_target_seqs 1 -outfmt 6 > $assemblyfile.r10000.megablast.nt
+
+Assign taxons to the contigs at the level of genus, order, family, superfamily, and kingdom (we find that "order" works well for visualising composition, but are keeping the rest just in case):
+
+    blast_taxonomy_report.pl \
+        -b $assemblyfile.r10000.megablast.nt \
+        -nodes /path/to/ncbi/taxdmp/nodes.dmp \
+        -names /path/to/ncbi/taxdmp/names.dmp \
+        -gi_taxid_file /path/to/ncbi/taxdmp/gi_taxid_nucl.dmp.gz \
+        -t genus=1 -t order=1 -t family=1 -t superfamily=1 -t kingdom=1 \
+    >$assemblyfile.r10000.megablast.nt.taxon
+
 How to make blobology plots with R
 ----------------------------------
 
+Requirements:
+
+1. `blobology.R` from this repository
+2. `$assemblyfile.r10000.megablast.nt.taxon` - a file with taxons assigned for a set of contigs from the preliminary assembly 
+3. `outputprefix.lencovgc.txt` - tab delimited file with len cov gc information obtained previously using `sam_len_cov_gc_insert.pl` script above
+
+Take the file with taxon assignments and use it to append a taxon column to the tab-delimited file with len cov gc information. Where a taxon identification is not available, use "Not annotated":
+
+    for file in *lencovgc.txt
+    do
+        cat $assemblyfile.r10000.megablast.nt.taxon $file | 
+        perl -anF"\t" -e '
+            chomp;
+            /^(\S+).*\torder\t([^\t]+)/ and $o{$1} = $2 and next;
+            if ($F[2] =~ /^\d+$/ ) { print "$_\t" . (exists $o{$F[1]} ? $o{$F[1]} : "Not annotated") . "\n" }
+        ' >> lencovgc.taxon
+    done    
+
+Use ggplot2 in R to make a plot showing the taxon-annotated gc-cov blob plots for each library:
+
+    Rscript --vanilla blobology.R lencovgc.taxon 0.005 1 2
+    
+The three arguments to blobology.R are:
+
+1. `lencovgc.taxon` - the tab delimited file with columns: libraryname, contigid, length, coverage, gc, taxon 
+2. `0.005` - a minimum presence threshold. A taxon must be present in at least this proportion of annotated contigs before it is reported. Without this cutoff, even a dozen random hits can quickly swamp the plot legend and make it impossible to see which taxa are present.
+3. `1 2` - this last pair of numbers is purely aesthetic - if there are multiple libraries being plotted, this pair specifies the number of rows and columns in which the plots are laid out. In our example, we have only two libraries, so `1 2` or `2 1` etc would have worked fine. With only 1 library, you will need `1 1`
+
 How to make taxon-specific blast databases
 ------------------------------------------
+
+Once you've made a GC-cov blob plot, you might want to make taxon specific databases to do a more sensitive search against.
+
+For example, the contaminants in figure http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3294205/figure/Fig3/ were all Proteobacteria (NCBI taxonomy ID 1224). On the NCBI website, we can easily restrict the target database to a particular taxon. However, for large-scale searches on a local computer/cluster, we will need a subset of the NCBI database specific to this taxon.
+
+Requirements:
+
+1. Taxonomy ID from NCBI for the subset you want to create: e.g., 1224 for Proteobacteria
+2. Local copy of NCBI blast database (eg: nt or nr)
+3. Install BLAST+ suite from ftp://ftp.ncbi.nih.gov/blast/executables/blast+/LATEST
+
+    curl "http://www.ncbi.nlm.nih.gov/sviewer/viewer.fcgi?tool=portal&sendto=on&db=nuccore&dopt=gilist&qty=2000000&filter=all&term=txid1224\[Organism:exp\]" >txid1224.gids
+    blastdb_aliastool -dbtype nucl -gilist txid1224.gids -db /path/to/blastdb/nt -out nt_Proteobacteria  
+
+Remember:
+
+1. get the db=nuccore part right (change to db=protein for nr)
+2. qty=NUM should be greater than total number of sequences
 
 How to select preliminary assembly (PASS) contigs with given GC or coverage
 ---------------------------------------------------------------------------
