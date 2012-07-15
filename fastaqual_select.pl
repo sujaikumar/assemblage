@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Getopt::Long qw(:config pass_through no_ignore_case no_auto_abbrev);
 
-my ($fastafile,$sort,$numfasta,$length,$prefix,$regexp,$headerfile,$includefile,$excludefile,$delimiter,$case,$interval,$rename) = ("-","S","","","","","","",""," ","N","","");
+my ($fastafile,$sort,$numfasta,$length,$prefix,$regexp,$headerfile,$includefile,$excludefile,$delimiter,$case,$interval,$rename) = ("","S","","","","","","",""," ","N","","");
 GetOptions (
   "f|fastafile:s" => \$fastafile,
   "s|sort:s" => \$sort,
@@ -19,6 +19,24 @@ GetOptions (
   "int|interval" => \$interval,
   "rename:s" => \$rename,
 );
+
+if (not $fastafile) {
+    print STDERR "Usage:
+  -f|fastafile <fastafile> MANDATORY
+  -s|sort [S|R|L|I]        default S (selection); R random; L length; I input file order
+  -n|numfasta <number>     number of fasta sequences (default all)
+  -l|length <number>       minimum length of fasta sequence to select (default 0)
+  -prefix <string>         prefix to add before sequence id (default none)
+  -regexp <string>         only select those sequences that match this regexp (seq id or sequence)
+  -i|inc|include <file>    file with list of seqids to include/select - one per line
+  -e|ex|exc|exclude <file> file with list of seqids to exclude - one per line
+  -d|delimiter <char>      character for delimiting seqid start end, in case of intervals
+  -c|case [U|L]            convert to upper or lower case
+  -int|interval            use if the include file is specified as seqid start end (i.e. if you want to extract intervals)
+  -rename <string>         use to rename each sequence with a five digit suffix. eg, -rename LSIG will create >LSIG00001 >LSIG00002 etc
+";
+   exit;
+}
 
 $case = uc(substr($case,0,1)) if $case;
 
