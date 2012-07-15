@@ -460,5 +460,3 @@ Note: all of this has to be done for the other library (600 bp) as well. i.e. we
 
 * `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired`
 * `g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired`
-
-
