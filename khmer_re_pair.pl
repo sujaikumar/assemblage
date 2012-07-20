@@ -6,11 +6,11 @@ khmer_re_pair.pl
 
 =head1 SYNOPSIS
 
-khmer_re_pair.pl -o original_interleaved_fasta -k khmer_filtered_fasta
+khmer_re_pair.pl -i original_interleaved_fasta -k khmer_filtered_fasta
 
 =head1 DESCRIPTION
 
-- Takes -o, an original paired (interleaved) fasta read file (one line per sequence)
+- Takes -i, an original paired (interleaved) fasta read file (one line per sequence)
 - Takes the khmer_filtered_fasta file
 - For each read in the khmer_filtered_fasta file, it prints out both the /1 and the /2 (without duplicates)
 - The goal is to not lose pairing info which khmer does lose
@@ -30,12 +30,12 @@ my $original_file;
 my $khmer_file;
 
 GetOptions (
-    "original=s"=> \$original_file,
+    "interleaved=s"=> \$original_file,
     "khmer=s"   => \$khmer_file,
 );
 
 if (not $original_file and not $khmer_file) {
-    print STDERR "Usage: khmer_re_pair.pl -o original_interleaved_fasta -k khmer_filtered_fasta\n";
+    print STDERR "Usage: khmer_re_pair.pl -i interleaved_original_fasta -k khmer_filtered_fasta\n";
     exit;
 }
 
