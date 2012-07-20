@@ -452,7 +452,7 @@ The command above takes the k-mer count file `interleaved.C20.kh` and whenever i
 
 One important thing to remember is that khmer works on individual reads and not on pairs. As a result, the pairing information of a read is lost if its pair is discarded. To get around this problem, we use the script `khmer_re_pair.pl` which pulls in the paired reads:
 
-    khmer_re_pair.pl -o g_ju800_110714HiSeq300.clean.txt.gz -k g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt > g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired
+    khmer_re_pair.pl -i g_ju800_110714HiSeq300.clean.txt.gz -k g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt > g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired
 
 Currently, `khmer_re_pair.pl` needs the complete file to be an interleaved fasta file (can be gzipped). For each read in the khmer-ed fasta file `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt`, it looks up the original interleaved fasta file and outputs both reads in the pair.
 
