@@ -439,7 +439,7 @@ Now, run the high-pass filter first:
 
 * The command above will take the gzipped cleaned interleaved fastq file specified and normalize-by-median all reads to a max-coverage of `-C 20`
 * `-k 25` specifies that k-mers of size 25 are used for normalization (this is a reasonable default)
-* `-N 4 -x 2e8` specifies how many blocks are used and how big each is (this settig will take up 4 x 2e8 = 3.2 GB of memory)
+* `-N 4 -x 2e8` specifies how many blocks are used and how big each is (this settig will take up 4 x 2e8 = 3.2 GB of memory. You might have to increase -x to 1e9 or more if khmer doesn't run on your data)
 * `-s` specifies the name of the file where the k-mer counts are stored and `-R` specifies a report file
 
 The output of this command will be a .keep file: `g_ju800_110714HiSeq300.clean.txt.gz.keep` which is a fasta file (khmer doesn't output fastq quality files).
