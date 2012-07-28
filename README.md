@@ -167,8 +167,7 @@ The single-end PASS will be in `$name/$name-contigs.fa`
 How to create a preliminary assembly using CLC
 ----------------------------------------------
 
-- Install the CLC Assembly Cell suite of tools (this README was tested with version 4.06 beta)
-- For a single end assembly, simply provide all error-corrected read files to `clc_novo_assemble`:
+Install the CLC Assembly Cell suite of tools (this README was tested with version 4.06 beta). For a single end assembly, simply provide all error-corrected read files to `clc_novo_assemble`:
 
     clc_novo_assemble -o clcse.fna -q \
     g_ju800_110714HiSeq300_1.clean.txt.gz g_ju800_110714HiSeq300_2.clean.txt.gz \
@@ -307,10 +306,10 @@ If it doesn't find the files, you can either:
 
 This generates length, coverage, GC content, and insert size statistics for each sample in the following output files:
 
-lib300.insert.freq.txt : tab delim: read_set, type(FR/RF), insert_size, freq
-lib300.insert.stat.txt : stats about total pairs, %FR, %RF, %FF etc
-lib300.lencovgc.txt    : tab delim: read_set, contig_id, len, cov, gc
-lib300.lencovgc.fna    : same as assembly fasta, but with seqid formatted as ` >contig_id_len_cov_gc` 
+- lib300.insert.freq.txt : tab delim: read_set, type(FR/RF), insert_size, freq
+- lib300.insert.stat.txt : stats about total pairs, %FR, %RF, %FF etc
+- lib300.lencovgc.txt    : tab delim: read_set, contig_id, len, cov, gc
+- lib300.lencovgc.fna    : same as assembly fasta, but with seqid formatted as `>contig_id_len_cov_gc` 
 
 
 How to make a plot of insert sizes for each library
