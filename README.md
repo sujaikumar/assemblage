@@ -167,21 +167,22 @@ The single-end PASS will be in `$name/$name-contigs.fa`
 How to create a preliminary assembly using CLC
 ----------------------------------------------
 
-1. Install the CLC Assembly Cell suite of tools (this README was tested with version 4.06 beta)
-2. For a single end assembly, simply provide all error-corrected read files to `clc_novo_assemble`:
-```
-clc_novo_assemble -o assembly-se.fna -q \
+- Install the CLC Assembly Cell suite of tools (this README was tested with version 4.06 beta)
+- For a single end assembly, simply provide all error-corrected read files to `clc_novo_assemble`:
+
+    clc_novo_assemble -o assembly-se.fna -q \
     lib1read1.fastq.gz lib1read2.fastq.gz \
     lib2read1.fastq.gz lib2read2.fastq.gz
-```
+
  - `-o` is the output assembly fasta file
  - `-q` is the option after which all read files should be included
-3. For a paired-end assembly, you have to know the real insert-size first, so do the single-end assembly, estimate the insert size by mapping reads back (as shown below), and use accurate insert-size estimates. An example command would be:
-```
-clc_novo_assemble -o clcse.fna -q \
+
+- For a paired-end assembly, you have to know the real insert-size first, so do the single-end assembly, estimate the insert size by mapping reads back (as shown below), and use accurate insert-size estimates. An example command would be:
+
+    clc_novo_assemble -o clcse.fna -q \
     lib1read1.fastq.gz lib1read2.fastq.gz \
     lib2read1.fastq.gz lib2read2.fastq.gz
-```
+
  - `-o` is the output assembly fasta file
  - `-q` is the option after which all read files should be included
 
