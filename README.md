@@ -247,7 +247,7 @@ How to map reads to an assembly to get insert-size and coverage information usin
 Requirements
 
 1. CLC's Assembly Cell suite in your path. Will be using two tools:
- - `clc_ref_assembl`
+ - `clc_ref_assemble`
  - `assembly_info`
 2. A preliminary assembly (will most likely be a single-end assembly if made with `clc_novo_assemble`. eg `clcse.fna`
 3. `clc_len_cov_gc_insert.pl` from this repository.
@@ -261,8 +261,7 @@ If you have separate forward and reverse reads, use the -i option to map them ba
 
 If you have multiple libraries (eg a 300 bp lib and a 600 bp library), map them separately:
 
-    clc_ref_assemble  -d clcse.fna -q -i libB_1.txt.gz libB_2.txt.gz -o clcse.fna.libB_interleaved.cas
-    
+    clc_ref_assemble  -d clcse.fna -q -i libB_1.txt.gz libB_2.txt.gz -o clcse.fna.libB_interleaved.cas    
     clc_ref_assemble  -d clcse.fna -q -i libC_1.txt.gz libC_2.txt.gz -o clcse.fna.libC_interleaved.cas
     
 Note that although we are using -i, we are not using -p etc because we don't want the mapper to assume a pairing insert size for now.
@@ -274,9 +273,7 @@ If you already have an interleaved read file, map the reads back to the clc sing
 If you have multiple libraries, and interleaved files for each, run each mapping separately:
 
     clc_ref_assemble  -d clcse.fna -q libA_interleaved.txt.gz -o clcse.fna.libA_interleaved.cas
-
     clc_ref_assemble  -d clcse.fna -q libB_interleaved.txt.gz -o clcse.fna.libB_interleaved.cas
-
     clc_ref_assemble  -d clcse.fna -q libC_interleaved.txt.gz -o clcse.fna.libC_interleaved.cas
 
 The important thing is to have separate .cas files for each library
@@ -293,7 +290,7 @@ This script looks inside the cas file, gets the "reference" file (e.g., the clc 
 
 Then, it uses `assembly_info clcse.fna.libA_interleaved.cas` to get the read (not k-mer) coverage of each contig, and spits out a file called `clcse.fna.libA_interleaved.cas.lencovgc.txt` (in the same location as `clcse.fna.libA_interleaved.cas`) which is a tab delimited file with the following headers:
 
-    read_set	contig_id	len     cov     gc
+    read_set    contig_id   len     cov     gc
 
 (read_set is the same thing as a library name)
 
@@ -318,7 +315,8 @@ Options for the clc_len_cov_gc_insert.pl script let you specify:
 
 Warning: the script gets the path of the reference file from the .cas file. So if you ran `clc_ref_assemble` with relative paths, it will expect the reference at those relative locations.
 
-If it doesn't find the files, you can either
+If it doesn't find the files, you can either:
+
 1. run `clc_len_cov_gc_insert.pl` from the same location that you ran `clc_ref_assemble` from (easiest)
 2. use the `-f` option in `clc_len_cov_gc_insert.pl` to manually specify the reference fasta location (but be careful that this is correct, else the script won't give errors and you'll end up with weird len cov gc stats
 3. modify the file paths in `clcse.fna.libA_interleaved.cas` using clc's `change_assembly_files` utility
@@ -326,11 +324,10 @@ If it doesn't find the files, you can either
 
 This generates length, coverage, GC content, and insert size statistics for each sample in the following output files:
 
-: Filename : Description :
-: libA.insert.freq.txt	 : tab delim: read_set, type(FR/RF), insert_size, freq
-: libA.insert.stat.txt	 : stats about total pairs, %FR, %RF, %FF etc
-: libA.lencovgc.txt	     : tab delim: read_set, contig_id, len, cov, gc
-: libA.lencovgc.fna	     : same as assembly fasta, but with seqid formatted as ` >contig_id_len_cov_gc` 
+libA.insert.freq.txt : tab delim: read_set, type(FR/RF), insert_size, freq
+libA.insert.stat.txt : stats about total pairs, %FR, %RF, %FF etc
+libA.lencovgc.txt    : tab delim: read_set, contig_id, len, cov, gc
+libA.lencovgc.fna    : same as assembly fasta, but with seqid formatted as ` >contig_id_len_cov_gc` 
 
 
 How to make a plot of insert sizes for each library
