@@ -2,22 +2,41 @@
 
 use strict;
 use warnings;
-use Getopt::Long qw(:config pass_through no_ignore_case);
+use Getopt::Long qw(:config pass_through no_ignore_case no_auto_abbrev);
 
-my ($fastafile,$sort,$numfasta,$length,$prefix,$regexp,$headerfile,$includefile,$excludefile,$delimiter,$case,$interval) = ("-","S","","","","","","",""," ","","");
+my ($fastafile,$sort,$numfasta,$length,$prefix,$regexp,$headerfile,$includefile,$excludefile,$delimiter,$case,$interval,$rename) = ("","S","","","","","","",""," ","N","","");
 GetOptions (
-  "fastafile:s" => \$fastafile,
-  "sort:s" => \$sort,
-  "numfasta:i" => \$numfasta,
-  "length:i" => \$length,
+  "f|fastafile:s" => \$fastafile,
+  "s|sort:s" => \$sort,
+  "n|numfasta:i" => \$numfasta,
+  "l|length:i" => \$length,
   "prefix:s" => \$prefix,
   "regexp:s" => \$regexp,
-  "includefile:s" => \$includefile,
-  "excludefile:s" => \$excludefile,
-  "delimiter:s" => \$delimiter,
-  "case:s" => \$case,
-  "interval" => \$interval,
+  "i|inc|include|includefile:s" => \$includefile,
+  "e|ex|exc|exclude|excludefile:s" => \$excludefile,
+  "d|delimiter:s" => \$delimiter,
+  "c|case:s" => \$case,
+  "int|interval" => \$interval,
+  "rename:s" => \$rename,
 );
+
+if (not $fastafile) {
+    print STDERR "Usage:
+  -f|fastafile <fastafile> MANDATORY
+  -s|sort [S|R|L|I]        default S (selection); R random; L length; I input file order
+  -n|numfasta <number>     number of fasta sequences (default all)
+  -l|length <number>       minimum length of fasta sequence to select (default 0)
+  -prefix <string>         prefix to add before sequence id (default none)
+  -regexp <string>         only select those sequences that match this regexp (seq id or sequence)
+  -i|inc|include <file>    file with list of seqids to include/select - one per line
+  -e|ex|exc|exclude <file> file with list of seqids to exclude - one per line
+  -d|delimiter <char>      character for delimiting seqid start end, in case of intervals
+  -c|case [U|L]            convert to upper or lower case
+  -int|interval            use if the include file is specified as seqid start end (i.e. if you want to extract intervals)
+  -rename <string>         use to rename each sequence with a five digit suffix. eg, -rename LSIG will create >LSIG00001 >LSIG00002 etc
+";
+   exit;
+}
 
 $case = uc(substr($case,0,1)) if $case;
 
@@ -30,7 +49,7 @@ if ($includefile)
         chomp;
         if ($interval and (/^>?(\S+)\s(\d+)\s(\d+)\b/ or /^>?(\S+)_(\d+)_(\d+)\b/))
         {
-            push @{$include_headers{$1}}, ($2 <= $3) ? [$2,$3] : [$3,$2];
+            push @{$include_headers{$1}}, [$2,$3];
             push @include_headers_ordering, $1;
         } elsif (/^>?(\S+)/)
         {
@@ -53,10 +72,10 @@ if ($excludefile)
     close FILE;
 }
 
-my $seqs = &fastafile2hash($fastafile,"N",$sort);
+my $seqs = &fastafile2hash($fastafile,$case,$sort);
 my @sortkeys;
 
-if (uc($sort) eq "R") {
+if (uc($sort) =~ /^[RS]$/) {
     @sortkeys = sort {$$seqs{$a}{order} <=> $$seqs{$b}{order}} keys %{$seqs};
 } elsif (uc($sort) eq "A") {
     @sortkeys = sort keys %{$seqs};
@@ -67,6 +86,7 @@ if (uc($sort) eq "R") {
 }
 
 my $num_printed = 0;
+my $toprint_index = 1;
 for my $chrontig (@sortkeys)
 {
     last if $numfasta and $numfasta == $num_printed;
@@ -86,10 +106,18 @@ for my $chrontig (@sortkeys)
         for my $interval (@{$include_headers{$chrontig}})
         {
             $toprint  = ">$prefix$chrontig";
+            $toprint  = ">$rename" . sprintf("%05d",$toprint_index) if $rename;
+            $toprint_index++;
             my ($start, $stop) = @{$interval};
             $toprint .= "$delimiter$start$delimiter$stop";
             $toprint .= " $$seqs{$chrontig}{desc}" if $$seqs{$chrontig}{desc};
-            $toprint .= "\n" . substr($$seqs{$chrontig}{seq}, $start - 1, $stop - $start + 1) . "\n";
+            my $seq = substr($$seqs{$chrontig}{seq}, $start - 1, $stop - $start + 1);
+            if ($start > $stop) {
+                $seq = substr($$seqs{$chrontig}{seq}, $stop - 1, $start - $stop + 1);
+                $seq =~ tr/ACGTacgt/TGCAtgca/;
+                $seq = (scalar reverse $seq);
+            }
+            $toprint .= "\n$seq\n";
             next if $regexp and $toprint !~ /$regexp/;
             print $toprint;
             $num_printed++;
@@ -98,6 +126,8 @@ for my $chrontig (@sortkeys)
     else 
     {
         $toprint  = ">$prefix$chrontig";
+        $toprint  = ">$rename" . sprintf("%05d",$toprint_index) if $rename;
+        $toprint_index++;
         $toprint .= " $$seqs{$chrontig}{desc}" if $$seqs{$chrontig}{desc};
         $$seqs{$chrontig}{seq} = lc($$seqs{$chrontig}{seq}) if $case eq "L";
         $$seqs{$chrontig}{seq} = uc($$seqs{$chrontig}{seq}) if $case eq "U";
