@@ -153,8 +153,8 @@ To get a preliminary assembly (PASS) with no pairing information (i.e. treating 
     name=C20rp.31.n10.se;
     mkdir $name;
     abyss-pe -C $name name=$name n=10 k=31 \
-        se='g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired \
-            g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired' &>$name/log
+        se='g_ju800_110714HiSeq300.clean.txt.gz \
+            g_ju800_110714HiSeq600.clean.txt.gz' &>$name/log
 
 Making a new directory with the parameters used makes it easy to track the settings used if we later create a lot of assemblies with different settings.  
 
@@ -170,18 +170,9 @@ How to create a preliminary assembly using CLC
 - Install the CLC Assembly Cell suite of tools (this README was tested with version 4.06 beta)
 - For a single end assembly, simply provide all error-corrected read files to `clc_novo_assemble`:
 
-    clc_novo_assemble -o assembly-se.fna -q \
-    lib1read1.fastq.gz lib1read2.fastq.gz \
-    lib2read1.fastq.gz lib2read2.fastq.gz
-
- - `-o` is the output assembly fasta file
- - `-q` is the option after which all read files should be included
-
-- For a paired-end assembly, you have to know the real insert-size first, so do the single-end assembly, estimate the insert size by mapping reads back (as shown below), and use accurate insert-size estimates. An example command would be:
-
     clc_novo_assemble -o clcse.fna -q \
-    lib1read1.fastq.gz lib1read2.fastq.gz \
-    lib2read1.fastq.gz lib2read2.fastq.gz
+    g_ju800_110714HiSeq300_1.clean.txt.gz g_ju800_110714HiSeq300_2.clean.txt.gz \
+    g_ju800_110714HiSeq600_1.clean.txt.gz g_ju800_110714HiSeq600_2.clean.txt.gz
 
  - `-o` is the output assembly fasta file
  - `-q` is the option after which all read files should be included
@@ -254,27 +245,20 @@ Requirements
 
 If you have separate forward and reverse reads, use the -i option to map them back like this:
 
-    clc_ref_assemble  -d clcse.fna -q -i libA_1.txt.gz libA_2.txt.gz -o clcse.fna.libA_interleaved.cas
+    clc_ref_assemble -d clcse.fna -o clcse.fna.lib300_interleaved.cas \
+    -q -i g_ju800_110714HiSeq300_1.clean.txt.gz g_ju800_110714HiSeq300_2.clean.txt.gz
 
 - `-d` is the reference fasta file (in this case, a preliminary assembly)
 - `-o` gives the output file (in CLC's .cas format)
 
-If you have multiple libraries (eg a 300 bp lib and a 600 bp library), map them separately:
-
-    clc_ref_assemble  -d clcse.fna -q -i libB_1.txt.gz libB_2.txt.gz -o clcse.fna.libB_interleaved.cas    
-    clc_ref_assemble  -d clcse.fna -q -i libC_1.txt.gz libC_2.txt.gz -o clcse.fna.libC_interleaved.cas
-    
 Note that although we are using -i, we are not using -p etc because we don't want the mapper to assume a pairing insert size for now.
-
-If you already have an interleaved read file, map the reads back to the clc single end assembly like this:
-
-    clc_ref_assemble  -d clcse.fna -q libA_interleaved.txt.gz -o clcse.fna.libA_interleaved.cas
 
 If you have multiple libraries, and interleaved files for each, run each mapping separately:
 
-    clc_ref_assemble  -d clcse.fna -q libA_interleaved.txt.gz -o clcse.fna.libA_interleaved.cas
-    clc_ref_assemble  -d clcse.fna -q libB_interleaved.txt.gz -o clcse.fna.libB_interleaved.cas
-    clc_ref_assemble  -d clcse.fna -q libC_interleaved.txt.gz -o clcse.fna.libC_interleaved.cas
+    clc_ref_assemble -d clcse.fna -o clcse.fna.lib300_interleaved.cas \
+    -q -i g_ju800_110714HiSeq300_1.clean.txt.gz g_ju800_110714HiSeq300_2.clean.txt.gz
+    clc_ref_assemble -d clcse.fna -o clcse.fna.lib600_interleaved.cas \
+    -q -i g_ju800_110714HiSeq600_1.clean.txt.gz g_ju800_110714HiSeq600_2.clean.txt.gz
 
 The important thing is to have separate .cas files for each library
 
@@ -282,17 +266,16 @@ Create len cov gc tables and insert size tables so that R can plot them.
 
 Do this for each lib .cas file created separately in the step above:
 
-    clc_len_cov_gc_insert.pl -c clcse.fna.libA_interleaved.cas -i -o ~/libA -lib LibA
+    clc_len_cov_gc_insert.pl -c clcse.fna.lib300_interleaved.cas -i -o lib300 -lib lib300
+    clc_len_cov_gc_insert.pl -c clcse.fna.lib600_interleaved.cas -i -o lib600 -lib lib600
 
 The `-i` option calculates insert sizes, but only works if `clc_ref_assemble` was run with INTERLEAVED input (either with an interleaved FASTA file or with -q -i).
 
 This script looks inside the cas file, gets the "reference" file (e.g., the clc se assembly), and gets length and GC from this file. Let's say this is called clcse.fna
 
-Then, it uses `assembly_info clcse.fna.libA_interleaved.cas` to get the read (not k-mer) coverage of each contig, and spits out a file called `clcse.fna.libA_interleaved.cas.lencovgc.txt` (in the same location as `clcse.fna.libA_interleaved.cas`) which is a tab delimited file with the following headers:
+Then, it uses `assembly_info clcse.fna.lib300_interleaved.cas` to get the read (not k-mer) coverage of each contig, and spits out a file called `clcse.fna.lib300_interleaved.cas.lencovgc.txt` (in the same location as `clcse.fna.lib300_interleaved.cas`) which is a tab delimited file with the following headers:
 
     read_set    contig_id   len     cov     gc
-
-(read_set is the same thing as a library name)
 
 It also creates a copy of the reference fasta file where the header has been modified to:
 
@@ -300,17 +283,17 @@ It also creates a copy of the reference fasta file where the header has been mod
 
 If the `-i` option was used, these additional files are created with information about insert size estimates:
 
-    clcse.fna.libA_interleaved.cas.insert.freq.txt
-    clcse.fna.libA_interleaved.cas.insert.stat.txt
+    clcse.fna.lib300_interleaved.cas.insert.freq.txt
+    clcse.fna.lib300_interleaved.cas.insert.stat.txt
 
-`clcse.fna.libA_interleaved.cas.insert.freq.txt` is a tab delimited file without headers that has these columns:
+`clcse.fna.lib300_interleaved.cas.insert.freq.txt` is a tab delimited file without headers that has these columns:
     
     read_set    type(FR/RF)     insert_size     freq
     
 Options for the clc_len_cov_gc_insert.pl script let you specify:
 - `-o` outfile (a new output filepath rathe rhan the default which is the .cas filepath)
-- `-l` libname (a new libname rather than the default, which is the .cas file name (eg `clcse.fna.libA_interleaved.cas`))
-- `-f` fastafile (a different, manually specified reference fasta file rather than the default - which is the reference file in `clcse.fna.libA_interleaved.cas`)
+- `-l` libname (a new libname rather than the default, which is the .cas file name (eg `clcse.fna.lib300_interleaved.cas`))
+- `-f` fastafile (a different, manually specified reference fasta file rather than the default - which is the reference file in `clcse.fna.lib300_interleaved.cas`)
 - `-d` to change the delimited in the fasta header (default "_")
 
 Warning: the script gets the path of the reference file from the .cas file. So if you ran `clc_ref_assemble` with relative paths, it will expect the reference at those relative locations.
@@ -319,15 +302,15 @@ If it doesn't find the files, you can either:
 
 1. run `clc_len_cov_gc_insert.pl` from the same location that you ran `clc_ref_assemble` from (easiest)
 2. use the `-f` option in `clc_len_cov_gc_insert.pl` to manually specify the reference fasta location (but be careful that this is correct, else the script won't give errors and you'll end up with weird len cov gc stats
-3. modify the file paths in `clcse.fna.libA_interleaved.cas` using clc's `change_assembly_files` utility
+3. modify the file paths in `clcse.fna.lib300_interleaved.cas` using clc's `change_assembly_files` utility
 4. rerun `clc_ref_assemble` with absolute filepaths (takes long, don't bother)
 
 This generates length, coverage, GC content, and insert size statistics for each sample in the following output files:
 
-libA.insert.freq.txt : tab delim: read_set, type(FR/RF), insert_size, freq
-libA.insert.stat.txt : stats about total pairs, %FR, %RF, %FF etc
-libA.lencovgc.txt    : tab delim: read_set, contig_id, len, cov, gc
-libA.lencovgc.fna    : same as assembly fasta, but with seqid formatted as ` >contig_id_len_cov_gc` 
+lib300.insert.freq.txt : tab delim: read_set, type(FR/RF), insert_size, freq
+lib300.insert.stat.txt : stats about total pairs, %FR, %RF, %FF etc
+lib300.lencovgc.txt    : tab delim: read_set, contig_id, len, cov, gc
+lib300.lencovgc.fna    : same as assembly fasta, but with seqid formatted as ` >contig_id_len_cov_gc` 
 
 
 How to make a plot of insert sizes for each library
