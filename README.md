@@ -164,10 +164,34 @@ Making a new directory with the parameters used makes it easy to track the setti
 
 The single-end PASS will be in `$name/$name-contigs.fa`
 
-How to map reads to an assembly to get insert-size and coverage information
----------------------------------------------------------------------------
+How to create a preliminary assembly using CLC
+----------------------------------------------
 
-1. Install bowtie2 from http://bowtie-bio.sourceforge.net/bowtie2 . This README was tested with Version 2.0.0-beta5 and Version 2.0.0-beta6 but will probably work with newer versions as well if the syntax has not changed.
+1. Install the CLC Assembly Cell suite of tools (this README was tested with version 4.06 beta)
+2. For a single end assembly, simply provide all error-corrected read files to `clc_novo_assemble`:
+
+    clc_novo_assemble -o assembly-se.fna -q \
+        lib1read1.fastq.gz lib1read2.fastq.gz \
+        lib2read1.fastq.gz lib2read2.fastq.gz
+
+ - `-o` is the output assembly fasta file
+ - `-q` is the option after which all read files should be included
+
+3. For a paired-end assembly, you have to know the real insert-size first, so do the single-end assembly, estimate the insert size by mapping reads back (as shown below), and use accurate insert-size estimates. An example command would be:
+
+    clc_novo_assemble -o clcse.fna -q \
+        lib1read1.fastq.gz lib1read2.fastq.gz \
+        lib2read1.fastq.gz lib2read2.fastq.gz
+
+ - `-o` is the output assembly fasta file
+ - `-q` is the option after which all read files should be included
+
+See the manual for `clc_novo_assemble` at http://www.clcbio.com/index.php?id=1393&manual=A_6_Options_clc_novo_assemble.html
+
+How to map reads to an assembly to get insert-size and coverage information using Bowtie 2
+------------------------------------------------------------------------------------------
+
+1. Install Bowtie 2 from http://bowtie-bio.sourceforge.net/bowtie2 . This README was tested with Version 2.0.0-beta5 and Version 2.0.0-beta6 but will probably work with newer versions as well if the syntax has not changed.
 2. Install samtools from http://samtools.sourceforge.net
 3. `sam_len_cov_gc_insert.pl` from this repository
 4. Preliminary assembly - a fasta file with contigs `filename-contigs.fa`.
@@ -217,10 +241,102 @@ If you used interleaved read files and the `-i` switch in `sam_len_cov_gc_insert
 * `outputprefix.pairing.hist.txt` - Frequency distribution of each insert size and whether the reads were pointed at each other ("innies") or away from each other ("outies", as you would expect from Illumina's mate-pair protocol)
 * `outputprefix.pairing.stat.txt` - Some statistics about what percentage of reads were mapped to the same contig and how many were innies or outies. etc.
 
+How to map reads to an assembly to get insert-size and coverage information using CLC
+-------------------------------------------------------------------------------------
+
+Requirements
+
+1. CLC's Assembly Cell suite in your path. Will be using two tools:
+ - `clc_ref_assembl`
+ - `assembly_info`
+2. A preliminary assembly (will most likely be a single-end assembly if made with `clc_novo_assemble`. eg `clcse.fna`
+3. `clc_len_cov_gc_insert.pl` from this repository.
+
+If you have separate forward and reverse reads, use the -i option to map them back like this:
+
+    clc_ref_assemble  -d clcse.fna -q -i libA_1.txt.gz libA_2.txt.gz -o clcse.fna.libA_interleaved.cas
+
+- `-d` is the reference fasta file (in this case, a preliminary assembly)
+- `-o` gives the output file (in CLC's .cas format)
+
+If you have multiple libraries (eg a 300 bp lib and a 600 bp library), map them separately:
+
+    clc_ref_assemble  -d clcse.fna -q -i libB_1.txt.gz libB_2.txt.gz -o clcse.fna.libB_interleaved.cas
+    
+    clc_ref_assemble  -d clcse.fna -q -i libC_1.txt.gz libC_2.txt.gz -o clcse.fna.libC_interleaved.cas
+    
+Note that although we are using -i, we are not using -p etc because we don't want the mapper to assume a pairing insert size for now.
+
+If you already have an interleaved read file, map the reads back to the clc single end assembly like this:
+
+    clc_ref_assemble  -d clcse.fna -q libA_interleaved.txt.gz -o clcse.fna.libA_interleaved.cas
+
+If you have multiple libraries, and interleaved files for each, run each mapping separately:
+
+    clc_ref_assemble  -d clcse.fna -q libA_interleaved.txt.gz -o clcse.fna.libA_interleaved.cas
+
+    clc_ref_assemble  -d clcse.fna -q libB_interleaved.txt.gz -o clcse.fna.libB_interleaved.cas
+
+    clc_ref_assemble  -d clcse.fna -q libC_interleaved.txt.gz -o clcse.fna.libC_interleaved.cas
+
+The important thing is to have separate .cas files for each library
+
+Create len cov gc tables and insert size tables so that R can plot them.
+
+Do this for each lib .cas file created separately in the step above:
+
+    clc_len_cov_gc_insert.pl -c clcse.fna.libA_interleaved.cas -i -o ~/libA -lib LibA
+
+The `-i` option calculates insert sizes, but only works if `clc_ref_assemble` was run with INTERLEAVED input (either with an interleaved FASTA file or with -q -i).
+
+This script looks inside the cas file, gets the "reference" file (e.g., the clc se assembly), and gets length and GC from this file. Let's say this is called clcse.fna
+
+Then, it uses `assembly_info clcse.fna.libA_interleaved.cas` to get the read (not k-mer) coverage of each contig, and spits out a file called `clcse.fna.libA_interleaved.cas.lencovgc.txt` (in the same location as `clcse.fna.libA_interleaved.cas`) which is a tab delimited file with the following headers:
+
+    read_set	contig_id	len     cov     gc
+
+(read_set is the same thing as a library name)
+
+It also creates a copy of the reference fasta file where the header has been modified to:
+
+    >contig_id_<length>_<readcoverage>_<gc>
+
+If the `-i` option was used, these additional files are created with information about insert size estimates:
+
+    clcse.fna.libA_interleaved.cas.insert.freq.txt
+    clcse.fna.libA_interleaved.cas.insert.stat.txt
+
+`clcse.fna.libA_interleaved.cas.insert.freq.txt` is a tab delimited file without headers that has these columns:
+    
+    read_set    type(FR/RF)     insert_size     freq
+    
+Options for the clc_len_cov_gc_insert.pl script let you specify:
+- `-o` outfile (a new output filepath rathe rhan the default which is the .cas filepath)
+- `-l` libname (a new libname rather than the default, which is the .cas file name (eg `clcse.fna.libA_interleaved.cas`))
+- `-f` fastafile (a different, manually specified reference fasta file rather than the default - which is the reference file in `clcse.fna.libA_interleaved.cas`)
+- `-d` to change the delimited in the fasta header (default "_")
+
+Warning: the script gets the path of the reference file from the .cas file. So if you ran `clc_ref_assemble` with relative paths, it will expect the reference at those relative locations.
+
+If it doesn't find the files, you can either
+1. run `clc_len_cov_gc_insert.pl` from the same location that you ran `clc_ref_assemble` from (easiest)
+2. use the `-f` option in `clc_len_cov_gc_insert.pl` to manually specify the reference fasta location (but be careful that this is correct, else the script won't give errors and you'll end up with weird len cov gc stats
+3. modify the file paths in `clcse.fna.libA_interleaved.cas` using clc's `change_assembly_files` utility
+4. rerun `clc_ref_assemble` with absolute filepaths (takes long, don't bother)
+
+This generates length, coverage, GC content, and insert size statistics for each sample in the following output files:
+
+: Filename : Description :
+: libA.insert.freq.txt	 : tab delim: read_set, type(FR/RF), insert_size, freq
+: libA.insert.stat.txt	 : stats about total pairs, %FR, %RF, %FF etc
+: libA.lencovgc.txt	     : tab delim: read_set, contig_id, len, cov, gc
+: libA.lencovgc.fna	     : same as assembly fasta, but with seqid formatted as ` >contig_id_len_cov_gc` 
+
+
 How to make a plot of insert sizes for each library
 ---------------------------------------------------
 
-If you used interleaved reads when mapping the read files to the preliminary assembly using bowtie2 (in the previous How-To), then you can use the following R script to create a pretty plot of the insert sizes.
+If you used interleaved reads when mapping the read files to the preliminary assembly using bowtie2 or CLC (in the previous How-Tos), then you can use the following R script to create a pretty plot of the insert sizes.
 
 Requirements:
 
