@@ -1,0 +1,2 @@
+#!/usr/bin/awk -f
+{p+=$3-$2}END{print p}
