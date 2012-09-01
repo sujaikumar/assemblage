@@ -126,7 +126,7 @@ while (<SAM>) {
         die "$F[2] in samfile $samfile, but not in contigfile $contigfastafile\n" if not exists $$fastahash{$F[2]};
         $$fastahash{$F[2]}{cov} += ($read1{tend} - $read1{tstart} + 1)/$$fastahash{$F[2]}{len};
     }
-    $_ = <SAM>;
+    next if not $_ = <SAM>;
     chomp;
     @F=split/\t/;
     print STDERR "Warning: Output not paired\nInsert length estimates will probably be meaningless\n" and $unpaired_warning_printed = 1 if $F[0] !~ /^$readid/ and not $unpaired_warning_printed and $insertestimate;
