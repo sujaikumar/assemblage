@@ -13,6 +13,16 @@ About
 
 This is a set of scripts for working with genome assemblies, making taxon-annotated GC-coverage plots (a.k.a blob plots), extracting reads belonging to the blobs, etc
 
+These blob plots as used here were described in http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3294205/
+
+Only 6 months after this paper was published did our group realise that taxon-annotated GC-coverage plots acronyms to, wait for it, TAGC plots! (thank Mark Blaxter for spotting that).
+
+Figure 3 from the paper:
+
+![Caenorhabditis sp 5 Blob Plot](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3294205/bin/13199_2012_154_Fig3_HTML.jpg)
+
+Figure 3: A low-complexity metagenome. Taxon-annotated GC-coverage scatter-plot (as in Fig. 2) for contigs from a preliminary SE assembly of a Caenorhabditis sp 5 DNA sample. 10,000 randomly selected contigs were BLAST-annotated by comparison to the NCBI nt database, and coloured by class-of-origin of the best match identified. Full colour version is available online
+
 Example Data Sets
 =================
 
@@ -198,7 +208,7 @@ Map reads for multiple libraries using a bash for loop
 
     for lib in g_ju800_110714HiSeq300.clean.txt.gz g_ju800_110714HiSeq600.clean.txt.gz
     do
-        bowtie2 -x $assemblyfile -f -U $lib --very-fast-local -p 8 --reorder --mm | 
+        bowtie2 -x $assemblyfile -q -U $lib --very-fast-local -p 8 --reorder --mm | 
         tee >(samtools view -S -b - > $assemblyfile.$lib.bowtie2.bam) |
         tee >(samtools view -S -b - | samtools sort -m 2000000000 - $assemblyfile.$lib.bowtie2.sorted) |
         sam_len_cov_gc_insert.pl -i -f $assemblyfile -s - -out $assemblyfile.$lib
