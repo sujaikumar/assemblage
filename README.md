@@ -448,7 +448,7 @@ The following command will create three files: `prelim_contigs_nt_Nematoda.m8.tx
 * `-b2` name of file with tabular blast hits to second blast database
 
 How to extract reads (and their pairs) that map to a set of desired contigs in the preliminary assembly
--------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
 
 Once a set of contigs has been identified for reassembly by a series of positive and negative filtering steps, we need to extract the reads that belong to those contigs.
 
@@ -470,7 +470,7 @@ Requirements:
 This set of reads can now be reassembled stringently.
 
 How to find mate-paired reads that don't map to the ends of contigs and use those to conservatively scaffold the contigs
-------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
 
 Requirements:
 
@@ -565,3 +565,63 @@ Note: all of this has to be done for the other library (600 bp) as well. i.e. we
 
 * `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired`
 * `g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired`
+
+How to align ESTs and protein sequences to genome assemblies to assess assembly contiguity and completeness
+-------------------------------------------------------------------------------------
+
+Requirements:
+
+1. Genome assembly nucleotide fasta files
+2. EST nucleotide fasta file
+3. Protein fasta file
+4. BLAT
+5. tblastn from NCBI's blast+ suite
+6. `blastm8_filter.pl`, `bedsum`, and `seq_st_en_merge_overlapping.pl` from this repository
+
+To compare multiple genome assemblies, keeping the same file extension (eg, .fna) makes it easier to run the comparisons in parallel.
+
+### ESTs
+
+### Proteins
+
+First, make blast databases and run tblastn:
+
+    proteinfile=related_species.faa
+    
+    parallel "makeblastdb -dbtype nucl -in {}" ::: *.fna
+
+    parallel "tblastn -query $proteinfile -db {} -evalue 1e-5 -outfmt '6 std qlen slen' -max_target_seqs 10 -out $proteinfile.{}.tblastn -num_threads 2" ::: *.fna
+
+To assess contiguity, count how many protein query sequences were >70% covered by just one target genome hit (and the span of amino acids in such proteins):
+
+    parallel -k  "echo {}; \
+    zcat {} | blastm8_filter.pl -b - -m 1 -c -qcov 0.7 -query $proteinfile | cut -f1 | uniq | wc -l; \
+    zcat {} | blastm8_filter.pl -b - -m 1 -c -qcov 0.7 -query $proteinfile | cut -f1,7,8 | seq_st_en_merge_overlapping.pl | bedsum" ::: $proteinfile.*.fna.tblastn
+
+`blastm8_filter.pl` uses the following options:
+
+- `-b` input tabular blast result (tblastn in this case)
+- `-m 1` Take only the top hit for each query
+- `-c` Combine HSPs within a hit when calculating coverage
+- `-qcov 0.7` Filter out those hits where less than 70% of the query is covered by alignments
+- `-query` Name of query protein file (needed to calculate the length of each protein sequence to estimate the coverage)
+
+`seq_st_en_merge_overlapping.pl` takes sequence names and start-stop intervals, merges overlapping intervals, and returns only non-overlapping intervals.
+
+`bedsum` is a one line awk script for summing the total span of all sequence intervals (`awk '{span+=$3-$2+1}END{print span}'`)
+
+To assess completeness, count how many protein query sequences (and the span of amino acids in such proteins) were >50% covered if all hits to the genome were considered:
+
+    parallel -k  "echo {}; \
+    zcat {} | blastm8_filter.pl -b - -c -qcov 0.5 -query $proteinfile | cut -f1 | uniq | wc -l; \
+    zcat {} | blastm8_filter.pl -b - -c -qcov 0.5 -query $proteinfile | cut -f1,7,8 | seq_st_en_merge_overlapping.pl | bedsum" ::: $proteinfile.*.fna.tblastn
+
+### ESTs
+
+Run BLAT for the query EST set against multiple assemblies, but get the result in tabular blast format:
+
+    estfile=same_species_est.fna
+    parallel "blat -out=blast8 {} $estfile.{}.blat.blast8" ::: *.fna
+    
+The remaining steps are the same as above.
+ 
