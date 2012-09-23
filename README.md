@@ -566,6 +566,39 @@ Note: all of this has to be done for the other library (600 bp) as well. i.e. we
 * `g_ju800_110714HiSeq300.clean.txt.gz.keep.abundfilt.repaired`
 * `g_ju800_110714HiSeq600.clean.txt.gz.keep.abundfilt.repaired`
 
+
+How to assemble RNA-Seq reads using SOAPdenovo-Trans
+----------------------------------------------------
+
+Requirements:
+
+1. Illumina Paired-End RNA-Seq reads
+2. Accurate insert size estimate for PE reads
+3. SOAPdenovo-Trans from http://soap.genomics.org.cn/SOAPdenovo-Trans.html - Release 1.01, 12-22-2011
+
+Make a config file (called 'config' in this case) with the right path to your read files (in fastq format)
+
+    max_rd_len=38
+    [LIB]
+    avg_ins=100
+    rank=1
+    q1=../s_5_AllRead1.fastq
+    q2=../s_5_AllRead2.fastq
+
+Run SOAPdenovo-Trans
+
+    SOAPdenovo-Trans_1.01/SOAPdenovo-Trans-31kmer all -s config -M 3 -D 2 -a -p 32 -o M3D2
+
+* all - to do all steps of the assembly (graph building, scaffolding etc)
+* -s config file
+* -M mergeLevel(default 1,min 0, max 3): the strength of merging similar sequences during contiging
+* -D EdgeCovCutoff: delete edges with coverage no larger than (default 1)
+* -a initMemoryAssumption: Initiate the memory assumption to avoid further reallocation
+* -p n_cpu(default 8): number of cpu for use
+* -o OutputFile: prefix of output file name
+
+The file you want will be M3D2.scafSeq (or whatever output prefix you specify)
+
 How to align ESTs and protein sequences to genome assemblies to assess assembly contiguity and completeness
 -------------------------------------------------------------------------------------
 
@@ -579,8 +612,6 @@ Requirements:
 6. `blastm8_filter.pl`, `bedsum`, and `seq_st_en_merge_overlapping.pl` from this repository
 
 To compare multiple genome assemblies, keeping the same file extension (eg, .fna) makes it easier to run the comparisons in parallel.
-
-### ESTs
 
 ### Proteins
 
