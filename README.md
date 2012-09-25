@@ -86,6 +86,28 @@ Note: The <() syntax is for bash process substitution. Anything inside <(...) wi
 
 which will create `g_ju800_110714HiSeq300_interleaved.txt.r0.1.1` and `g_ju800_110714HiSeq300_interleaved.txt.r0.1.2`
 
+How to use FastQC to check raw read qualities before assembly
+-------------------------------------------------------------
+
+Run FastQC (we used version 0.10.0) using this command:
+
+    fastqc --nogroup <readfiles...>
+
+* --nogroup shows each cycle separately rather than grouping cycle 10 onwards in groups of 5. Very useful for pinpointing failed cycles (i.e. cycles with lots of Ns)    
+
+FastQC output is divided into sections as described below:
+
+* Basic Statistics: Total number of reads and read length. A rough estimate of the genome coverage is given by multiplying the number of reads by the read length to get the number of bases sequenced per file, summing across all files, and dividing this number by the expected genome size. If there are too few reads (<50X genome coverage), more sequencing will almost certainly be needed for assembling a de novo genome.
+* Per base sequence quality: Low quality towards the end of each read is expected and can be trimmed. Typically, a Phred quality threshold of 20 is used. Most cycles/positions should have a median quality above 20, otherwise the run may be very low quality and will assemble poorly. If there is a quality dip one or more times in the middle of the sequence (or at the start), then additional correcting might be needed. Most quality trimming algorithms use sliding windows and trim only from the 3' end.
+* Per sequence quality scores - Mean sequence quality histogram
+* Per base sequence content and per base GC content: Genomic DNA should have roughly even levels of G and C, and roughly even levels of A and T. If the first few bases are very skewed, then that might indicate that multiplexing barcode adapters have been left on. G > C, or A > T might indicate sequencing bias, a known problem with Illumina sequencing. For RNA-Seq assemblies, the first 10 bases will often be even more skewed or "bumpy", but that is expected as RNA-Seq samples are primed with random hexamers nonamers which are a) not equally distributed in the original hexamer or nonamer mix and b) anneal at different rates, further increasing the skew.
+* Per sequence GC content - An uncontaminated genome sample will typically have a single GC peak. If there is a bump, that might indicate a contaminant in the sample. Typically, for nematodes that have an average GC between 30-50%, a bump on the right slope might indicate bacterial contamination, as many bacteria have higher GC content.
+* Per base N content: A large number of Ns at any one position might indicate an Illumina cycle failure. Most assembly algorithms throw away reads with an N in them, but if the proportion of reads thrown away is too large, error correction might be a better solution.
+* Sequence Length Distribution - Nothing to check here for raw Illumina reads - all reads are the same length. However, this plot could be useful for adapter- and quality- trimmed reads to see how long the remaining good quality reads are.
+* Sequence Duplication Levels - expected to be high for high coverage, and for pcr duplications in mate-pair data.
+* Overrepresented sequences. If there are any adapter sequences, they usually show up here. RNA-Seq libraries may also show overrepresented reads (or k-mers, see below) because of highly expressed genes in the sample.
+* K-mer Content - Hint at adapter sequences present (for example if the library insert is smaller than the read length) or if the multiplexing barcode is still present at the start of the read. We found 8-mers more useful than the default 5-mers, and you can modify the FastQC source code to change the default length.
+
 How to adapter- and quality-trim Illumina fastq reads using sickle and scythe in one command with no intermediate files
 -----------------------------------------------------------------------------------------------------------------------
 
