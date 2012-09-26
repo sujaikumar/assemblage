@@ -23,7 +23,12 @@ Figure 3 from the paper:
 
 Figure 3: A low-complexity metagenome. Taxon-annotated GC-coverage scatter-plot (as in Fig. 2) for contigs from a preliminary SE assembly of a Caenorhabditis sp 5 DNA sample. 10,000 randomly selected contigs were BLAST-annotated by comparison to the NCBI nt database, and coloured by class-of-origin of the best match identified. Full colour version is available online
 
-There are three other READMEs in this repository: [README-annotation.md](https://github.com/sujaikumar/assemblage/blob/master/README-annotation.md) corresponding to the three chapters of my thesis.
+There are three other READMEs in this repository corresponding to three of the chapters of my thesis:
+
+* [README-annotation.md](README-annotation.md)
+* [README-CNE.md](README-CNE.md)
+* [README-meloidogyne.md](README-meloidogyne.md)
+
 
 Example Data Sets
 =================
