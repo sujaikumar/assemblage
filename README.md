@@ -25,9 +25,9 @@ Figure 3: A low-complexity metagenome. Taxon-annotated GC-coverage scatter-plot 
 
 There are three other READMEs in this repository corresponding to three of the chapters of my thesis:
 
-* [README-annotation.md](README-annotation.md)
-* [README-CNE.md](README-CNE.md)
-* [README-meloidogyne.md](README-meloidogyne.md)
+* [README-annotation.md](https://github.com/sujaikumar/assemblage/blob/master/README-annotation.md)
+* [README-CNE.md](https://github.com/sujaikumar/assemblage/blob/master/README-CNE.md)
+* [README-meloidogyne.md](https://github.com/sujaikumar/assemblage/blob/master/README-meloidogyne.md)
 
 
 Example Data Sets
