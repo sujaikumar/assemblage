@@ -18,7 +18,6 @@ Overview:
 
 1. Align proteins from previously sequenced species (M. incognita and M. hapla) to new genome (M. floridensis) using exonerate:protein2genome model
 2. Convert exonerate output format to CDS and amino acid fasta files
-3. Process the fasta files to truncate sequences at stop codons and filter out short sequences (<50 aa)
 
 Details:
 
