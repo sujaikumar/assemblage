@@ -172,7 +172,7 @@ Requirements:
 Get a list of mRNA IDs with AED < 1 from MAKER2 GFF3 file:
 
     gff=maker2.gff3
-    perl -lne 'print $1 if /\tmRNA\t.+ID=([^;]+).+_AED=(.+?);/ and $1<1' $gff >$gff.aed-1.0.ids
+    perl -lne 'print $1 if /\tmRNA\t.+ID=([^;]+).+_AED=(.+?);/ and $2<1' $gff >$gff.aed-1.0.ids
 
 Extract all GFF lines from GFF3 file that contain these IDs. This will get all children of these features (CDSs, exons etc) as well because the Parent= attribute will have these mRNA IDs. This won't get the embedded genome fasta sequences, however:
 
