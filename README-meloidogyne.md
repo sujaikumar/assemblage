@@ -313,6 +313,8 @@ To analyse all clusters with a particular ratio of proteins from each species (e
 - work through the results.txt file, and make a %clusters hash (that stores all the sequences belonging to each cluster)
 - once all this is done (i.e. the bit upto the line with `}{`), then count the number of each type of protein in each cluster. If it matches the set we are working with (in this example, 1Mh:2Mi:1Mf), then print these 4 cds and protein sequences into a cluster nucleotide file (c$cluster.fna) and a cluster protein file (c$cluster.faa) respectively:
 
+Commands:
+
     mkdir raxml && cd raxml
     
     # set bash variables for the counts that we are pulling out results for:
