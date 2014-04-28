@@ -456,8 +456,9 @@ Requirements:
 2. Local copy of NCBI blast database (eg: nt or nr)
 3. Install BLAST+ suite from ftp://ftp.ncbi.nih.gov/blast/executables/blast+/LATEST
 
-`curl "http://www.ncbi.nlm.nih.gov/sviewer/viewer.fcgi?tool=portal&sendto=on&db=nuccore&dopt=gilist&qty=2000000&filter=all&term=txid1224\[Organism:exp\]" >txid1224.gids`
-`blastdb_aliastool -dbtype nucl -gilist txid1224.gids -db /path/to/blastdb/nt -out nt_Proteobacteria`
+        curl "http://www.ncbi.nlm.nih.gov/sviewer/viewer.fcgi?tool=portal&sendto=on&db=nuccore&dopt=gilist&qty=2000000&filter=all&term=txid1224\[Organism:exp\]" >txid1224.gids
+        
+        blastdb_aliastool -dbtype nucl -gilist txid1224.gids -db /path/to/blastdb/nt -out nt_Proteobacteria
 
 Remember:
 
