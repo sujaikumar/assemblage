@@ -8,10 +8,12 @@ assemblage [əˈsɛmblɪdʒ]
 
 From Collins English Dictionary – Complete and Unabridged © HarperCollins Publishers 1991, 1994, 1998, 2000, 2003
 
-Update:
+Updates:
 ======
 
-As of 2013-10-01, the scripts for making blobplots / Taxon-annotated GC-coverage plots (TAGC plots) are being moved and maintained at [github.com/blaxterlab/blobology](github.com/blaxterlab/blobology)
+2015-06-15: Currently, the best looking blobplots/TAGC plots are made by Dominik Laetsch's scripts at https://github.com/DRL/blobtools-light
+
+2013-10-01: The scripts for making blobplots / Taxon-annotated GC-coverage plots (TAGC plots) are being moved and maintained at [github.com/blaxterlab/blobology](github.com/blaxterlab/blobology)
 
 The scripts in this repository are being left as they are, as a record of the work accompanying my PhD thesis.
 
