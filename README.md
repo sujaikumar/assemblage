@@ -11,6 +11,8 @@ From Collins English Dictionary – Complete and Unabridged © HarperCollins Pub
 Updates:
 ======
 
+2016-09-08: Dominik Laetsch's Blobtools now completely supersedes blobology/TAGC plots. Try it out - it's so much better than anything I've ever written! https://github.com/DRL/blobtools - documentation at https://blobtools.readme.io
+
 2015-06-15: Currently, the best looking blobplots/TAGC plots are made by Dominik Laetsch's scripts at https://github.com/DRL/blobtools-light
 
 2013-10-01: The scripts for making blobplots / Taxon-annotated GC-coverage plots (TAGC plots) are being moved and maintained at [github.com/blaxterlab/blobology](github.com/blaxterlab/blobology)
